@@ -46,7 +46,7 @@ services:
     container_name: comfyui-gpu0
     ports:
       - "8188:8188"
-    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0"]
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0", "--enable-manager"]
     environment:
       - NVIDIA_VISIBLE_DEVICES=0          # 只看到 GPU 0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
@@ -64,7 +64,7 @@ services:
     container_name: comfyui-gpu1
     ports:
       - "8189:8188"                       # 換個 host port 避免衝突
-    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0"]
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0", "--enable-manager"]
     environment:
       - NVIDIA_VISIBLE_DEVICES=1          # 只看到 GPU 1
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility

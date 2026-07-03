@@ -127,7 +127,7 @@ fi
 # ── 啟動容器 ───────────────────────────────────────────────────
 log "啟動容器..."
 docker run -d "${RUN_ARGS[@]}" "${FULL_IMAGE}" \
-    python main.py --listen 0.0.0.0 --port 8188 ${CMD_EXTRA}
+    python main.py --listen 0.0.0.0 --port 8188 --enable-manager ${CMD_EXTRA}
 
 ok "ComfyUI 已啟動！"
 echo ""
