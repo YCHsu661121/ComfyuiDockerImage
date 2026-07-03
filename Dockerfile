@@ -44,7 +44,7 @@ RUN git clone --depth 1 --branch ${COMFYUI_VERSION} \
 
 # ---------- PyTorch (可切換 cu126 / cu130) + ComfyUI dependencies ----------
 ARG TORCH_INDEX=cu130
-RUN python -m pip install --upgrade pip \
+RUN python -m pip install --upgrade pip --ignore-installed \
     && python -m pip install \
         torch torchvision torchaudio \
         --extra-index-url https://download.pytorch.org/whl/${TORCH_INDEX} \
