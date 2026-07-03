@@ -1,0 +1,157 @@
+name: Build & Push Docker Image
+
+# ──────────────────────────────────────────────────────────────────
+# 觸發時機：
+#   1. 手動觸發 (workflow_dispatch) — 可自訂版本/CUDA/Torch
+#   2. 每週一 08:00 UTC 自動檢查 ComfyUI 是否有新版本
+#   3. Dockerfile / build-push.sh 有變動時自動觸發
+# ──────────────────────────────────────────────────────────────────
+on:
+  workflow_dispatch:
+    inputs:
+      comfyui_version:
+        description: 'ComfyUI version (e.g. v0.27.0). Leave blank = latest release.'
+        required: false
+        default: ''
+      cuda_tag:
+        description: 'CUDA base image tag'
+        required: false
+        default: '13.0.0-cudnn-runtime-ubuntu24.04'
+      torch_index:
+        description: 'PyTorch wheel index (cu130 / cu126 ...)'
+        required: false
+        default: 'cu130'
+      force:
+        description: 'Force build even if tag already exists on Docker Hub'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+  schedule:
+    - cron: '0 8 * * 1'   # 每週一 08:00 UTC
+
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'build-push.sh'
+      - '.github/workflows/docker-build-push.yml'
+
+env:
+  HUB_USER:   superyc1121
+  IMAGE_NAME: comfyui
+  CUDA_TAG:   13.0.0-cudnn-runtime-ubuntu24.04
+  TORCH_INDEX: cu130
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  # Job 1: 解析要 build 的 ComfyUI 版本
+  # ────────────────────────────────────────────────────────────────
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version:       ${{ steps.ver.outputs.version }}
+      versioned_tag: ${{ steps.ver.outputs.versioned_tag }}
+      should_build:  ${{ steps.check.outputs.should_build }}
+
+    steps:
+      - name: Resolve ComfyUI version
+        id: ver
+        run: |
+          INPUT="${{ github.event.inputs.comfyui_version }}"
+          if [ -n "$INPUT" ]; then
+            VERSION="$INPUT"
+          else
+            VERSION=$(curl -fsSL https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest \
+                      | jq -r '.tag_name')
+          fi
+          TORCH="${{ github.event.inputs.torch_index || env.TORCH_INDEX }}"
+          VERSIONED_TAG="${VERSION}-${TORCH}"
+          echo "version=$VERSION"        >> "$GITHUB_OUTPUT"
+          echo "versioned_tag=$VERSIONED_TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: $VERSION  →  tag: $VERSIONED_TAG"
+
+      - name: Check if tag already exists on Docker Hub
+        id: check
+        run: |
+          FORCE="${{ github.event.inputs.force || 'false' }}"
+          TAG="${{ steps.ver.outputs.versioned_tag }}"
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://hub.docker.com/v2/repositories/${{ env.HUB_USER }}/${{ env.IMAGE_NAME }}/tags/${TAG}")
+          echo "Docker Hub HTTP status for ${TAG}: $HTTP"
+          if [ "$HTTP" = "200" ] && [ "$FORCE" != "true" ]; then
+            echo "Tag already exists, skipping build."
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=true"  >> "$GITHUB_OUTPUT"
+          fi
+
+  # ────────────────────────────────────────────────────────────────
+  # Job 2: Build & Push
+  # ────────────────────────────────────────────────────────────────
+  build-push:
+    needs: resolve-version
+    if: needs.resolve-version.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 釋出磁碟空間（GitHub-hosted runner 預裝了大量工具）
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Prepare tags
+        id: tags
+        run: |
+          VER="${{ needs.resolve-version.outputs.version }}"
+          TORCH="${{ github.event.inputs.torch_index || env.TORCH_INDEX }}"
+          CUDA="${{ github.event.inputs.cuda_tag    || env.CUDA_TAG }}"
+          HUB="${{ env.HUB_USER }}/${{ env.IMAGE_NAME }}"
+          echo "versioned_tag=${HUB}:${VER}-${TORCH}" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=${HUB}:latest"              >> "$GITHUB_OUTPUT"
+          echo "version=${VER}"                        >> "$GITHUB_OUTPUT"
+          echo "torch=${TORCH}"                        >> "$GITHUB_OUTPUT"
+          echo "cuda=${CUDA}"                          >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.tags.outputs.versioned_tag }}
+            ${{ steps.tags.outputs.latest_tag }}
+          build-args: |
+            COMFYUI_VERSION=${{ steps.tags.outputs.version }}
+            CUDA_TAG=${{ steps.tags.outputs.cuda }}
+            TORCH_INDEX=${{ steps.tags.outputs.torch }}
+          cache-from: type=gha
+          cache-to:   type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "## Docker Build Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | \`${{ steps.tags.outputs.versioned_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Also  | \`${{ steps.tags.outputs.latest_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ComfyUI | \`${{ steps.tags.outputs.version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| CUDA base | \`${{ steps.tags.outputs.cuda }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| PyTorch index | \`${{ steps.tags.outputs.torch }}\` |" >> "$GITHUB_STEP_SUMMARY"
