@@ -83,11 +83,13 @@ if ($CheckOnly) {
 }
 
 # ── Step 2：查詢 Docker Hub 該 tag 是否存在 ──────────────────────────────────
-Write-Log "查詢 Docker Hub: $HubUser/$HubRepo:$latestVersion"
+# Tag 格式與 build-push.ps1 一致：v0.27.0-cu130
+$versionedTag = "${latestVersion}-${TorchIndex}"
+Write-Log "查詢 Docker Hub: $HubUser/$HubRepo`:$versionedTag"
 
 $tagExists = $false
 try {
-    $dhUrl  = "https://hub.docker.com/v2/repositories/$HubUser/$HubRepo/tags/$latestVersion"
+    $dhUrl  = "https://hub.docker.com/v2/repositories/$HubUser/$HubRepo/tags/$versionedTag"
     $tagInfo = Invoke-ApiGet -Url $dhUrl
     $pushedAt = $tagInfo.last_pushed
     Write-Log "Tag 已存在於 Docker Hub (最後推送: $pushedAt)" "WARN"
@@ -95,7 +97,7 @@ try {
 } catch {
     # 404 = tag 不存在，這是預期的
     if ($_ -match "404" -or $_ -match "Not Found") {
-        Write-Log "Tag $latestVersion 尚未在 Docker Hub 上，需要 Build & Push"
+        Write-Log "Tag $versionedTag 尚未在 Docker Hub 上，需要 Build & Push"
         $tagExists = $false
     } else {
         Write-Log "Docker Hub 查詢錯誤（網路問題？繼續執行）: $_" "WARN"
