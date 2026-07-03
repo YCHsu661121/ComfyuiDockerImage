@@ -4,7 +4,6 @@
 # Image : superyc1121/comfyui:latest
 # Usage : bash run.sh [OPTIONS]
 #
-#   -t, --tag <tag>       指定版本，預設 latest
 #   -p, --port <port>     Host port，預設 8188
 #   -g, --gpu <id>        GPU id（0/1/all），預設 all
 #       --cpu             純 CPU 模式（無 GPU）
@@ -14,7 +13,7 @@
 #
 # 範例：
 #   bash run.sh                          # pull latest + 啟動
-#   bash run.sh -t v0.27.0 -p 8080      # 指定版本與 port
+#   bash run.sh -p 8080                  # 改 port
 #   bash run.sh -g 1                     # 只用 GPU 1
 #   bash run.sh --cpu                    # CPU 模式
 #   bash run.sh --pull-only              # 只更新 image
@@ -23,7 +22,6 @@ set -euo pipefail
 
 # ── 預設值 ────────────────────────────────────────────────────
 HUB_IMAGE="superyc1121/comfyui"
-TAG="latest"
 HOST_PORT=8188
 GPU_ID="all"
 CPU_MODE=false
@@ -53,7 +51,6 @@ usage() {
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -t|--tag)       TAG="$2";       shift 2 ;;
         -p|--port)      HOST_PORT="$2"; shift 2 ;;
         -g|--gpu)       GPU_ID="$2";    shift 2 ;;
         --cpu)          CPU_MODE=true;  shift   ;;
@@ -64,7 +61,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-FULL_IMAGE="${HUB_IMAGE}:${TAG}"
+FULL_IMAGE="${HUB_IMAGE}:latest"
 
 # ── 前置檢查 ──────────────────────────────────────────────────
 command -v docker &>/dev/null || die "找不到 docker，請先安裝 Docker Engine"
