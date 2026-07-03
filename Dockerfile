@@ -17,31 +17,24 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_BREAK_SYSTEM_PACKAGES=1
 
 # ---------- System dependencies ----------
+# Ubuntu 24.04 內建 Python 3.12，不需 deadsnakes PPA
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        software-properties-common \
         wget \
         git \
+        python3 \
+        python3-pip \
+        python3-dev \
         libgl1 \
         libglib2.0-0 \
         libsm6 \
         libxrender1 \
         libxext6 \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        python3.12 \
-        python3.12-dev \
-        python3.12-venv \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
-
-# ---------- Bootstrap pip for Python 3.12 ----------
-RUN wget -qO /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py \
-    && python3.12 /tmp/get-pip.py \
-    && rm /tmp/get-pip.py \
-    && update-alternatives --install /usr/bin/python  python  /usr/bin/python3.12 1 \
-    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
 # ---------- Clone ComfyUI ----------
 ARG COMFYUI_VERSION=v0.27.0
