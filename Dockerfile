@@ -10,7 +10,7 @@
 # 驅動要求：CUDA UMD ≥ 12.6 即可；UMD 13.3 完全支援
 # 多 GPU  ：docker-compose.yml 中 NVIDIA_VISIBLE_DEVICES=all / device_ids 控制
 # ============================================================
-ARG CUDA_TAG=12.6.3-cudnn-runtime-ubuntu22.04
+ARG CUDA_TAG=13.0.0-cudnn-runtime-ubuntu24.04
 FROM nvidia/cuda:${CUDA_TAG}
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -50,7 +50,7 @@ RUN git clone --depth 1 --branch ${COMFYUI_VERSION} \
         https://github.com/Comfy-Org/ComfyUI.git .
 
 # ---------- PyTorch (可切換 cu126 / cu130) + ComfyUI dependencies ----------
-ARG TORCH_INDEX=cu126
+ARG TORCH_INDEX=cu130
 RUN python -m pip install --upgrade pip \
     && python -m pip install \
         torch torchvision torchaudio \

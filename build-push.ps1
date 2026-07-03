@@ -12,10 +12,10 @@
 #>
 param(
     [string]$Version    = "v0.27.0",
-    # CUDA base image tag — 切換 cu130 時改為 "13.0.0-cudnn-runtime-ubuntu24.04"
-    [string]$CudaTag    = "12.6.3-cudnn-runtime-ubuntu22.04",
-    # PyTorch wheel index — 搭配 CudaTag 使用：cu126 或 cu130
-    [string]$TorchIndex = "cu126",
+    # CUDA base image tag
+    [string]$CudaTag    = "13.0.0-cudnn-runtime-ubuntu24.04",
+    # PyTorch wheel index
+    [string]$TorchIndex = "cu130",
     [switch]$NoPush
 )
 
@@ -24,7 +24,8 @@ $ErrorActionPreference = "Stop"
 
 $HubUser   = "superyc1121"
 $ImageName = "comfyui"
-$FullTag   = "${HubUser}/${ImageName}:${Version}"
+# Tag 格式：v0.27.0-cu130
+$FullTag   = "${HubUser}/${ImageName}:${Version}-${TorchIndex}"
 $LatestTag = "${HubUser}/${ImageName}:latest"
 $ScriptDir = $PSScriptRoot
 

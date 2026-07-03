@@ -17,8 +17,8 @@
 param(
     [switch]$Force,
     [switch]$CheckOnly,
-    [string]$CudaTag    = "12.6.3-cudnn-runtime-ubuntu22.04",
-    [string]$TorchIndex = "cu126"
+    [string]$CudaTag    = "13.0.0-cudnn-runtime-ubuntu24.04",
+    [string]$TorchIndex = "cu130"
 )
 
 Set-StrictMode -Version Latest
