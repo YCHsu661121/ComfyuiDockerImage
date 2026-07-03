@@ -57,13 +57,10 @@ RUN python -m pip install --upgrade pip \
         --extra-index-url https://download.pytorch.org/whl/${TORCH_INDEX} \
     && python -m pip install -r requirements.txt
 
-# ---------- ComfyUI-Manager dependencies ----------
-RUN python -m pip install -r manager_requirements.txt
-
 # ---------- Persistent data (mount at runtime) ----------
 VOLUME ["/app/models", "/app/output", "/app/input", "/app/custom_nodes"]
 
 EXPOSE 8188
 
-# --enable-manager 啟用 ComfyUI-Manager（已內建於 ComfyUI v0.27.0+）
-CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--enable-manager"]
+# ComfyUI-Manager 為選用，啟用時自行加上 --enable-manager
+CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188"]
