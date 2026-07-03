@@ -1,0 +1,8 @@
+models/
+output/
+input/
+custom_nodes/
+*.7z
+*.zip
+*.log
+.git

@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# 使用說明
+#   單一容器 (全部 GPU)：  docker compose up comfyui          → http://localhost:8188
+#   GPU-0 專用容器    ：  docker compose up comfyui-gpu0     → http://localhost:8188
+#   GPU-1 專用容器    ：  docker compose up comfyui-gpu1     → http://localhost:8189
+#   兩張同時跑        ：  docker compose up comfyui-gpu0 comfyui-gpu1
+#
+# 注意：CUDA UMD 13.3 驅動向下相容，CUDA 12.6 映像可正常執行。
+#       如需完整 cu130 效能，使用：docker compose build --build-arg CUDA_TAG=13.0
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── 共用設定區塊 (YAML anchor) ────────────────────────────────────────────────
+x-comfyui-base: &comfyui-base
+  image: superyc1121/comfyui:v0.27.0
+  restart: unless-stopped
+  volumes:
+    - ./models:/app/models
+    - ./output:/app/output
+    - ./input:/app/input
+    - ./custom_nodes:/app/custom_nodes
+  environment:
+    - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+services:
+
+  # ── 模式 A：單一容器，所有 GPU 可見（ComfyUI 預設使用 GPU 0）──────────────
+  comfyui:
+    <<: *comfyui-base
+    container_name: comfyui
+    ports:
+      - "8188:8188"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # ── 模式 B：兩個獨立容器，各鎖定一張 GPU ─────────────────────────────────
+  comfyui-gpu0:
+    <<: *comfyui-base
+    container_name: comfyui-gpu0
+    ports:
+      - "8188:8188"
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0", "--enable-manager"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0          # 只看到 GPU 0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+    profiles: [multi-gpu]
+
+  comfyui-gpu1:
+    <<: *comfyui-base
+    container_name: comfyui-gpu1
+    ports:
+      - "8189:8188"                       # 換個 host port 避免衝突
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0", "--enable-manager"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1          # 只看到 GPU 1
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+    profiles: [multi-gpu]

@@ -1,0 +1,15 @@
+# ── 執行時產生的大型資料夾，不推入 repo ──
+models/
+output/
+input/
+custom_nodes/
+
+# ── 執行時產生的記錄檔 ──
+auto-update.log
+.last-built-version
+
+# ── 系統 / 工具 ──
+.DS_Store
+Thumbs.db
+*.7z
+*.zip
