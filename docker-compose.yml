@@ -12,7 +12,7 @@
 
 # ── 共用設定區塊 (YAML anchor) ────────────────────────────────────────────────
 x-comfyui-base: &comfyui-base
-  image: superyc1121/comfyui:latest
+  image: superyc1121/comfyui:rebuild-data
   restart: unless-stopped
   volumes:
     - /mnt/comfyui/models:/app/models
