@@ -28,12 +28,12 @@ CPU_MODE=false
 PULL_ONLY=false
 AUTO_REMOVE=false
 
-# ── 目錄（和 run.sh 同一層）──────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODELS_DIR="${SCRIPT_DIR}/models"
-OUTPUT_DIR="${SCRIPT_DIR}/output"
-INPUT_DIR="${SCRIPT_DIR}/input"
-NODES_DIR="${SCRIPT_DIR}/custom_nodes"
+# ── 目錄（固定掛載於 /mnt/comfyui）──────────────────────────
+BASE_DIR="/mnt/comfyui"
+MODELS_DIR="${BASE_DIR}/models"
+OUTPUT_DIR="${BASE_DIR}/output"
+INPUT_DIR="${BASE_DIR}/input"
+NODES_DIR="${BASE_DIR}/custom_nodes"
 
 # ── 顏色 ──────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'
