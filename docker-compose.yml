@@ -1,6 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 使用說明
 #   單一容器 (全部 GPU)：  docker compose up comfyui          → http://localhost:8188
+#   啟動後自動偵測 VRAM 最大的 GPU 為主卡
 #   GPU-0 專用容器    ：  docker compose up comfyui-gpu0     → http://localhost:8188
 #   GPU-1 專用容器    ：  docker compose up comfyui-gpu1     → http://localhost:8189
 #   兩張同時跑        ：  docker compose up comfyui-gpu0 comfyui-gpu1
@@ -23,7 +24,7 @@ x-comfyui-base: &comfyui-base
 
 services:
 
-  # ── 模式 A：單一容器，所有 GPU 可見（ComfyUI 預設使用 GPU 0）──────────────
+  # ── 模式 A：單一容器，所有 GPU 可見（entrypoint.sh 自動選 VRAM 最大的為主卡）─────
   comfyui:
     <<: *comfyui-base
     container_name: comfyui

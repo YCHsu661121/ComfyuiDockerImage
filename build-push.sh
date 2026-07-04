@@ -52,9 +52,11 @@ command -v docker &>/dev/null || die "找不到 docker"
 
 FULL_TAG="${HUB_USER}/${IMAGE_NAME}:${VERSION}-${TORCH_INDEX}"
 LATEST_TAG="${HUB_USER}/${IMAGE_NAME}:latest"
+REBUILD_DATA_TAG="${HUB_USER}/${IMAGE_NAME}:rebuild-data"
 
 log "Building  : ${FULL_TAG}"
 log "Also tags : ${LATEST_TAG}"
+log "Also tags : ${REBUILD_DATA_TAG}"
 echo ""
 
 # ── Build ──────────────────────────────────────────────────────
@@ -65,6 +67,7 @@ docker build \
     --build-arg "TORCH_INDEX=${TORCH_INDEX}" \
     -t "${FULL_TAG}" \
     -t "${LATEST_TAG}" \
+    -t "${REBUILD_DATA_TAG}" \
     "${SCRIPT_DIR}"
 
 ok "Build complete!"
@@ -79,7 +82,7 @@ if ! docker info 2>/dev/null | grep -q "Username"; then
 fi
 
 # ── Push ───────────────────────────────────────────────────────
-for tag in "$FULL_TAG" "$LATEST_TAG"; do
+for tag in "$FULL_TAG" "$LATEST_TAG" "$REBUILD_DATA_TAG"; do
     log "Pushing ${tag} ..."
     docker push "${tag}"
 done

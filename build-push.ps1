@@ -22,15 +22,17 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$HubUser   = "superyc1121"
-$ImageName = "comfyui"
+$HubUser         = "superyc1121"
+$ImageName       = "comfyui"
 # Tag 格式：v0.27.0-cu130
-$FullTag   = "${HubUser}/${ImageName}:${Version}-${TorchIndex}"
-$LatestTag = "${HubUser}/${ImageName}:latest"
+$FullTag         = "${HubUser}/${ImageName}:${Version}-${TorchIndex}"
+$LatestTag       = "${HubUser}/${ImageName}:latest"
+$RebuildDataTag  = "${HubUser}/${ImageName}:rebuild-data"
 $ScriptDir = $PSScriptRoot
 
 Write-Host "==> Building  : $FullTag" -ForegroundColor Cyan
 Write-Host "==> Also tags : $LatestTag" -ForegroundColor Cyan
+Write-Host "==> Also tags : $RebuildDataTag" -ForegroundColor Cyan
 Write-Host ""
 
 # ── Build ──────────────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ $buildArgs = @(
     "--build-arg", "TORCH_INDEX=$TorchIndex",
     "-t", $FullTag,
     "-t", $LatestTag,
+    "-t", $RebuildDataTag,
     $ScriptDir
 )
 
@@ -66,7 +69,7 @@ if ($loginInfo -notmatch "https://index.docker.io/v1/") {
 }
 
 # ── Push ────────────────────────────────────────────────────────────────────
-foreach ($tag in @($FullTag, $LatestTag)) {
+foreach ($tag in @($FullTag, $LatestTag, $RebuildDataTag)) {
     Write-Host "`n==> Pushing $tag ..." -ForegroundColor Cyan
     docker push $tag
     if ($LASTEXITCODE -ne 0) { throw "docker push $tag failed (exit $LASTEXITCODE)" }

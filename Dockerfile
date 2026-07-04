@@ -58,5 +58,8 @@ VOLUME ["/app/models", "/app/output", "/app/input", "/app/custom_nodes"]
 
 EXPOSE 8188
 
-# ComfyUI-Manager 為選用，啟用時自行加上 --enable-manager
-CMD ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--enable-manager"]
+# ---------- Entrypoint: auto-select GPU with most VRAM ----------
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+CMD ["/app/entrypoint.sh"]
