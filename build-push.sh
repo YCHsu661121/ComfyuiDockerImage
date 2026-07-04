@@ -50,7 +50,8 @@ done
 
 command -v docker &>/dev/null || die "找不到 docker"
 
-FULL_TAG="${HUB_USER}/${IMAGE_NAME}:${VERSION}-${TORCH_INDEX}"
+DATE_SUFFIX=$(date +%m%d)
+FULL_TAG="${HUB_USER}/${IMAGE_NAME}:${VERSION}-${TORCH_INDEX}-${DATE_SUFFIX}"
 LATEST_TAG="${HUB_USER}/${IMAGE_NAME}:latest"
 REBUILD_DATA_TAG="${HUB_USER}/${IMAGE_NAME}:rebuild-data"
 

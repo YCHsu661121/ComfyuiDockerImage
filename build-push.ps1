@@ -24,8 +24,9 @@ $ErrorActionPreference = "Stop"
 
 $HubUser         = "superyc1121"
 $ImageName       = "comfyui"
-# Tag 格式：v0.27.0-cu130
-$FullTag         = "${HubUser}/${ImageName}:${Version}-${TorchIndex}"
+# Tag 格式：v0.27.0-cu130-0705
+$DateSuffix      = Get-Date -Format "MMdd"
+$FullTag         = "${HubUser}/${ImageName}:${Version}-${TorchIndex}-${DateSuffix}"
 $LatestTag       = "${HubUser}/${ImageName}:latest"
 $RebuildDataTag  = "${HubUser}/${ImageName}:rebuild-data"
 $ScriptDir = $PSScriptRoot
