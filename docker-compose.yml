@@ -11,13 +11,13 @@
 
 # ── 共用設定區塊 (YAML anchor) ────────────────────────────────────────────────
 x-comfyui-base: &comfyui-base
-  image: superyc1121/comfyui:v0.27.0
+  image: superyc1121/comfyui:latest
   restart: unless-stopped
   volumes:
-    - ./models:/app/models
-    - ./output:/app/output
-    - ./input:/app/input
-    - ./custom_nodes:/app/custom_nodes
+    - /mnt/comfyui/models:/app/models
+    - /mnt/comfyui/output:/app/output
+    - /mnt/comfyui/input:/app/input
+    - /mnt/comfyui/custom_nodes:/app/custom_nodes
   environment:
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
