@@ -53,6 +53,11 @@ RUN python -m pip install --upgrade pip --ignore-installed \
 # ---------- ComfyUI-Manager dependencies ----------
 RUN python -m pip install -r manager_requirements.txt
 
+# ---------- ComfyUI-Crystools dependencies ----------
+# pynvml: GPU 監控 (NVML)；其餘為 Crystools requirements.txt 所需
+# 預裝於 image，避免容器重建後 custom node pip install 遺失
+RUN python -m pip install pynvml py-cpuinfo deepdiff piexif
+
 # ---------- Persistent data (mount at runtime) ----------
 VOLUME ["/app/models", "/app/output", "/app/input", "/app/custom_nodes"]
 
