@@ -1,7 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 使用說明
-#   單一容器 (全部 GPU)：  docker compose up comfyui          → http://localhost:8188
-#   啟動後自動偵測 VRAM 最大的 GPU 為主卡
+#   單一容器 (預設使用 GPU 1)：  docker compose up comfyui          → http://localhost:8188
 #   GPU-0 專用容器    ：  docker compose up comfyui-gpu0     → http://localhost:8188
 #   GPU-1 專用容器    ：  docker compose up comfyui-gpu1     → http://localhost:8189
 #   兩張同時跑        ：  docker compose up comfyui-gpu0 comfyui-gpu1
@@ -12,7 +11,7 @@
 
 # ── 共用設定區塊 (YAML anchor) ────────────────────────────────────────────────
 x-comfyui-base: &comfyui-base
-  image: superyc1121/comfyui:rebuild-data
+  image: superyc1121/comfyui:latest
   restart: unless-stopped
   volumes:
     - /mnt/comfyui/models:/app/models
@@ -24,21 +23,22 @@ x-comfyui-base: &comfyui-base
 
 services:
 
-  # ── 模式 A：單一容器，所有 GPU 可見（entrypoint.sh 自動選 VRAM 最大的為主卡）─────
+  # ── 模式 A：預設使用第二張 GPU (GPU 1) ───────────────────────────────────────
   comfyui:
     <<: *comfyui-base
     container_name: comfyui
     ports:
       - "8188:8188"
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--cuda-device", "0", "--enable-manager"]
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=1          # 只看到 GPU 1
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: all
+              device_ids: ["1"]             # 強制鎖定第 1 號 GPU
               capabilities: [gpu]
 
   # ── 模式 B：兩個獨立容器，各鎖定一張 GPU ─────────────────────────────────
