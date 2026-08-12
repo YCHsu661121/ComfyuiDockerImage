@@ -22,7 +22,7 @@ set -euo pipefail
 
 HUB_USER="superyc1121"
 IMAGE_NAME="comfyui"
-VERSION="v0.27.0"
+VERSION=""
 CUDA_TAG="13.0.0-cudnn-runtime-ubuntu24.04"
 TORCH_INDEX="cu130"
 NO_PUSH=false
@@ -49,6 +49,22 @@ while [[ $# -gt 0 ]]; do
 done
 
 command -v docker &>/dev/null || die "找不到 docker"
+
+# ── 自動偵測 GitHub 最新版本 ─────────────────────────────────
+detect_github_version() {
+    command -v curl &>/dev/null || return
+    curl -sf --max-time 8 \
+        -H "User-Agent: ComfyUI-Docker/1.0" \
+        "https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest" \
+    | grep '"tag_name"' | head -1 | awk -F'"' '{print $4}'
+}
+
+if [[ -z "$VERSION" ]]; then
+    log "查詢 GitHub 最新版本..."
+    VERSION=$(detect_github_version)
+    [[ -n "$VERSION" ]] || die "無法自動取得 GitHub 版本，請手動指定 -v <version>"
+    ok "偵測到最新版本: ${VERSION}"
+fi
 
 DATE_SUFFIX=$(date +%m%d)
 FULL_TAG="${HUB_USER}/${IMAGE_NAME}:${VERSION}-${TORCH_INDEX}-${DATE_SUFFIX}"
