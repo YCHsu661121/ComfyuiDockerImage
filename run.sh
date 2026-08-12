@@ -64,6 +64,15 @@ done
 
 FULL_IMAGE="${HUB_IMAGE}:latest"
 
+# ── 查詢 GitHub 最新版本 ────────────────────────────────────
+detect_github_version() {
+    command -v curl &>/dev/null || return
+    curl -sf --max-time 8 \
+        -H "User-Agent: ComfyUI-Docker/1.0" \
+        "https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest" \
+    | grep '"tag_name"' | head -1 | awk -F'"' '{print $4}'
+}
+
 # ── 自動偵測 VRAM 最大的 GPU ─────────────────────────────────
 detect_best_gpu() {
     command -v nvidia-smi &>/dev/null || { echo "all"; return; }
@@ -85,6 +94,15 @@ for dir in "$MODELS_DIR" "$OUTPUT_DIR" "$INPUT_DIR" "$NODES_DIR"; do
         log "建立資料夾: $dir"
     fi
 done
+
+# ── 偵測 GitHub 最新版本 ──────────────────────────────────────
+log "查詢 ComfyUI 最新版本 (GitHub)..."
+GH_VERSION=$(detect_github_version)
+if [[ -n "$GH_VERSION" ]]; then
+    ok "ComfyUI 最新版本: ${GH_VERSION}"
+else
+    warn "無法取得 GitHub 版本（網路問題？），繼續使用現有 image"
+fi
 
 # ── Pull image ─────────────────────────────────────────────────
 log "拉取 image: ${FULL_IMAGE}"
