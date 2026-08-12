@@ -35,6 +35,7 @@ MODELS_DIR="${BASE_DIR}/models"
 OUTPUT_DIR="${BASE_DIR}/output"
 INPUT_DIR="${BASE_DIR}/input"
 NODES_DIR="${BASE_DIR}/custom_nodes"
+USER_DIR="${BASE_DIR}/user"
 
 # ── 顏色 ──────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'
@@ -88,7 +89,7 @@ detect_best_gpu() {
 command -v docker &>/dev/null || die "找不到 docker，請先安裝 Docker Engine"
 
 # ── 建立本機資料夾 ─────────────────────────────────────────────
-for dir in "$MODELS_DIR" "$OUTPUT_DIR" "$INPUT_DIR" "$NODES_DIR"; do
+for dir in "$MODELS_DIR" "$OUTPUT_DIR" "$INPUT_DIR" "$NODES_DIR" "$USER_DIR"; do
     if [[ ! -d "$dir" ]]; then
         mkdir -p "$dir"
         log "建立資料夾: $dir"
@@ -121,6 +122,7 @@ RUN_ARGS=(
     -v      "${OUTPUT_DIR}:/app/output"
     -v      "${INPUT_DIR}:/app/input"
     -v      "${NODES_DIR}:/app/custom_nodes"
+    -v      "${USER_DIR}:/app/user"
 )
 
 [[ "$AUTO_REMOVE" == true ]] && RUN_ARGS+=(--rm) && unset 'RUN_ARGS[1]' 'RUN_ARGS[2]'  # 移除 --restart
@@ -182,5 +184,6 @@ printf "  %-14s %s\n" "models:"       "${MODELS_DIR}"
 printf "  %-14s %s\n" "output:"       "${OUTPUT_DIR}"
 printf "  %-14s %s\n" "input:"        "${INPUT_DIR}"
 printf "  %-14s %s\n" "custom_nodes:" "${NODES_DIR}"
+printf "  %-14s %s\n" "user:"         "${USER_DIR}"
 echo -e "${CYAN}──────────────────────────────────────────────${RESET}"
 echo ""

@@ -18,6 +18,7 @@ x-comfyui-base: &comfyui-base
     - /mnt/comfyui/output:/app/output
     - /mnt/comfyui/input:/app/input
     - /mnt/comfyui/custom_nodes:/app/custom_nodes
+    - /mnt/comfyui/user:/app/user
   environment:
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility
 

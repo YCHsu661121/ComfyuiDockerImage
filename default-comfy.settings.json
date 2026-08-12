@@ -1,0 +1,15 @@
+{
+  "Comfy.UseNewMenu": "Top",
+  "Crystools.RefreshRate": 0.5,
+  "Crystools.MonitorWidth": 60,
+  "Crystools.MonitorHeight": 30,
+  "Crystools.ShowCpu": true,
+  "Crystools.ShowRam": true,
+  "Crystools.ShowHdd": false,
+  "Crystools.ShowGpuUsageZero": true,
+  "Crystools.ShowGpuVramZero": true,
+  "Crystools.ShowGpuTemperatureZero": true,
+  "Crystools.ShowGpuUsageOne": true,
+  "Crystools.ShowGpuVramOne": true,
+  "Crystools.ShowGpuTemperatureOne": true
+}

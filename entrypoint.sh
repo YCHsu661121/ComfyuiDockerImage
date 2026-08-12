@@ -32,6 +32,14 @@ fi
 
 echo "[entrypoint] Detected GPU ${BEST_GPU} as primary (largest VRAM)"
 
+# ── 初始化預設設定（首次啟動或設定檔不存在）───────────────────────────
+SETTINGS_FILE="/app/user/default/comfy.settings.json"
+if [[ ! -f "$SETTINGS_FILE" ]]; then
+    mkdir -p "$(dirname "$SETTINGS_FILE")"
+    cp /app/default-comfy.settings.json "$SETTINGS_FILE"
+    echo "[entrypoint] Initialized default settings (Crystools monitors enabled)"
+fi
+
 exec python main.py \
     --listen 0.0.0.0 \
     --port 8188 \
