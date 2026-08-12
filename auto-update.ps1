@@ -73,35 +73,24 @@ if ($CheckOnly) {
     exit 0
 }
 
-# -- Step 2: Check Docker Hub Tag Existence --
-$versionedTag = "${latestVersion}-${TorchIndex}"
-Write-Log "Checking Docker Hub: ${HubUser}/${HubRepo}:${versionedTag}"
-
-$tagExists = $false
-try {
-    $dhUrl  = "https://hub.docker.com/v2/repositories/$HubUser/$HubRepo/tags/$versionedTag"
-    $tagInfo = Invoke-ApiGet -Url $dhUrl
-    $pushedAt = $tagInfo.last_pushed
-    Write-Log "Tag already exists on Docker Hub (Last pushed: $pushedAt)" "WARN"
-    $tagExists = $true
-} catch {
-    if ($_ -match "404" -or $_ -match "Not Found") {
-        Write-Log "Tag $versionedTag not found on Docker Hub. Ready to Build and Push."
-        $tagExists = $false
-    } else {
-        Write-Log "Docker Hub query error: $_" "WARN"
-        $tagExists = $false
-    }
+# -- Step 2: Check Local Version Record --
+# Tag format on Docker Hub includes a date suffix (e.g. v0.x.x-cu130-0812),
+# so querying Docker Hub by tag is unreliable. Use the local record instead.
+$versionFile = Join-Path $ScriptDir ".last-built-version"
+$lastBuilt   = ""
+if (Test-Path $versionFile) {
+    $lastBuilt = (Get-Content $versionFile -Encoding UTF8).Trim()
+    Write-Log "Last built version: $lastBuilt"
 }
 
 # -- Step 3: Decide Action --
-if ($tagExists -and -not $Force) {
+if ($lastBuilt -eq $latestVersion -and -not $Force) {
     Write-Log "Already at latest version ($latestVersion). No update needed." "OK"
     Write-Log "=== Finished (No Update) ==="
     exit 0
 }
 
-if ($Force -and $tagExists) {
+if ($Force -and $lastBuilt -eq $latestVersion) {
     Write-Log "-Force flag detected. Forcing rebuild for $latestVersion" "WARN"
 }
 
