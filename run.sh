@@ -23,7 +23,8 @@ set -euo pipefail
 # ── 預設值 ────────────────────────────────────────────────────
 HUB_IMAGE="superyc1121/comfyui"
 HOST_PORT=8188
-GPU_ID="all"
+GPU_ID=""
+GPU_AUTO=true
 CPU_MODE=false
 PULL_ONLY=false
 AUTO_REMOVE=false
@@ -52,7 +53,7 @@ usage() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -p|--port)      HOST_PORT="$2"; shift 2 ;;
-        -g|--gpu)       GPU_ID="$2";    shift 2 ;;
+        -g|--gpu)       GPU_ID="$2"; GPU_AUTO=false; shift 2 ;;
         --cpu)          CPU_MODE=true;  shift   ;;
         --pull-only)    PULL_ONLY=true; shift   ;;
         --rm)           AUTO_REMOVE=true; shift ;;
@@ -62,6 +63,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 FULL_IMAGE="${HUB_IMAGE}:latest"
+
+# ── 自動偵測 VRAM 最大的 GPU ─────────────────────────────────
+detect_best_gpu() {
+    command -v nvidia-smi &>/dev/null || { echo "all"; return; }
+    local best
+    best=$(nvidia-smi --query-gpu=index,memory.free \
+           --format=csv,noheader,nounits 2>/dev/null \
+           | sort -t',' -k2 -rn | head -1 \
+           | awk -F',' '{print $1}' | tr -d ' ')
+    [[ -n "$best" ]] && echo "$best" || echo "all"
+}
 
 # ── 前置檢查 ──────────────────────────────────────────────────
 command -v docker &>/dev/null || die "找不到 docker，請先安裝 Docker Engine"
@@ -106,11 +118,23 @@ else
         warn "繼續以 --gpus 嘗試..."
     fi
 
+    # 自動選 VRAM 最大的 GPU
+    if [[ "$GPU_AUTO" == true ]]; then
+        GPU_ID=$(detect_best_gpu)
+        if [[ "$GPU_ID" == "all" ]]; then
+            log "GPU 自動偵測：使用全部 GPU"
+        else
+            local_vram=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits \
+                         2>/dev/null | sed -n "$((GPU_ID+1))p" | tr -d ' ')
+            log "GPU 自動偵測：選擇 GPU ${GPU_ID}（可用 VRAM ${local_vram} MiB）"
+        fi
+    fi
+
     if [[ "$GPU_ID" == "all" ]]; then
         RUN_ARGS+=(--gpus all)
         RUN_ARGS+=(-e NVIDIA_VISIBLE_DEVICES=all)
     else
-        RUN_ARGS+=(--gpus "\"device=${GPU_ID}\"")
+        RUN_ARGS+=(--gpus "device=${GPU_ID}")
         RUN_ARGS+=(-e "NVIDIA_VISIBLE_DEVICES=${GPU_ID}")
     fi
     RUN_ARGS+=(-e NVIDIA_DRIVER_CAPABILITIES=compute,utility)
@@ -134,4 +158,11 @@ echo ""
 echo -e "  瀏覽器開啟 → ${GREEN}http://localhost:${HOST_PORT}${RESET}"
 echo -e "  查看 log   → ${CYAN}docker logs -f ${CONTAINER_NAME}${RESET}"
 echo -e "  停止容器   → ${CYAN}docker stop ${CONTAINER_NAME}${RESET}"
+echo ""
+echo -e "${CYAN}── 掛載目錄 ──────────────────────────────────${RESET}"
+printf "  %-14s %s\n" "models:"       "${MODELS_DIR}"
+printf "  %-14s %s\n" "output:"       "${OUTPUT_DIR}"
+printf "  %-14s %s\n" "input:"        "${INPUT_DIR}"
+printf "  %-14s %s\n" "custom_nodes:" "${NODES_DIR}"
+echo -e "${CYAN}──────────────────────────────────────────────${RESET}"
 echo ""
