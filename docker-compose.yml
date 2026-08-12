@@ -21,6 +21,7 @@ x-comfyui-base: &comfyui-base
     - /mnt/comfyui/user:/app/user
   environment:
     - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    - PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 services:
 
