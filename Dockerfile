@@ -18,7 +18,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_BREAK_SYSTEM_PACKAGES=1
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    CC=gcc \
+    CXX=g++
 
 # ---------- System dependencies ----------
 # Ubuntu 24.04 內建 Python 3.12，不需 deadsnakes PPA
