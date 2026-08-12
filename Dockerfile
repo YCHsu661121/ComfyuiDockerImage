@@ -57,9 +57,10 @@ RUN python -m pip install --upgrade pip --ignore-installed \
 RUN python -m pip install -r manager_requirements.txt
 
 # ---------- ComfyUI-Crystools dependencies ----------
-# pynvml: GPU 監控 (NVML)；其餘為 Crystools requirements.txt 所需
-# 預裝於 image，避免容器重建後 custom node pip install 遺失
-RUN python -m pip install pynvml py-cpuinfo deepdiff piexif
+# Clone temporarily to get exact requirements; custom_nodes itself is a runtime volume mount
+RUN git clone --depth 1 https://github.com/crystian/ComfyUI-Crystools.git /tmp/crystools \
+    && pip install --upgrade -r /tmp/crystools/requirements.txt \
+    && rm -rf /tmp/crystools
 
 # ---------- Persistent data (mount at runtime) ----------
 VOLUME ["/app/models", "/app/output", "/app/input", "/app/custom_nodes"]
