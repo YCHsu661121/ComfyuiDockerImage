@@ -91,7 +91,7 @@ command -v docker &>/dev/null || die "找不到 docker，請先安裝 Docker Eng
 # ── 建立本機資料夾 ─────────────────────────────────────────────
 for dir in "$MODELS_DIR" "$OUTPUT_DIR" "$INPUT_DIR" "$NODES_DIR" "$USER_DIR"; do
     if [[ ! -d "$dir" ]]; then
-        mkdir -p "$dir"
+        mkdir -p "$dir" 2>/dev/null || sudo mkdir -p "$dir"
         log "建立資料夾: $dir"
     fi
 done
