@@ -10,6 +10,8 @@ param(
     [string]$Version    = "v0.27.0",
     [string]$CudaTag    = "13.0.0-cudnn-runtime-ubuntu24.04",
     [string]$TorchIndex = "cu130",
+    [ValidateSet("standard", "none")]
+    [string]$EasyInstallNodes = "standard",
     [switch]$NoPush
 )
 
@@ -41,6 +43,7 @@ $buildArgs = @(
     "--build-arg", "COMFYUI_VERSION=$Version",
     "--build-arg", "CUDA_TAG=$CudaTag",
     "--build-arg", "TORCH_INDEX=$TorchIndex",
+    "--build-arg", "EASY_INSTALL_NODES=$EasyInstallNodes",
     "-t", $FullTag,
     "-t", $LatestTag,
     "-t", $RebuildDataTag,

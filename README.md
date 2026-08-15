@@ -20,6 +20,7 @@
 - [常用 CLI 參數](#常用-cli-參數)
 - [自行 Build & Push](#自行-build--push)
   - [切換 cu130（CUDA 13.x 最佳化）](#切換-cu130cuda-13x-最佳化)
+- [Easy-Install Custom Nodes](#easy-install-custom-nodes)
 - [自動更新](#自動更新)
 - [目錄結構](#目錄結構)
 - [常見問題](#常見問題)
@@ -213,6 +214,33 @@ docker run -d --gpus all -p 8188:8188 \
 ```powershell
 .\build-push.ps1 -Version v0.28.0
 ```
+
+## Easy-Install Custom Nodes
+
+映像預設加入 Tavris1/ComfyUI-Easy-Install 的 `standard` 節點 profile：
+ComfyUI-Manager、Easy-Use、ControlNet Aux、rgthree、iTools、GGUF、
+ControlAltAI、Inpaint CropAndStitch、RMBG、VideoHelperSuite、TiledDiffusion、
+KJNodes、WanVideoWrapper、QwenVL、Qwen-TTS、FishAudioS2、SeedVR2、LayerStyle、
+WanAnimatePreprocess、Pixaroma、Easy-Sam3、SCAIL-Pose、MelBandRoFormer、
+Krea2T-Enhancer 與 Krea2Edit。
+
+節點會先建置到映像內的範本目錄；容器首次啟動時才複製到持久化的
+`/app/custom_nodes` 掛載目錄。既有同名節點不會被覆寫。自訂節點的
+`requirements.txt` 會排除 `torch`、`torchvision` 與 `torchaudio`，以維持所選
+CUDA PyTorch wheel。
+
+若只需要基礎 ComfyUI，可在建置時停用這個 profile：
+
+```powershell
+.\build-push.ps1 -EasyInstallNodes none -NoPush
+```
+
+```bash
+bash build-push.sh --easy-install-nodes none --no-push
+```
+
+Nunchaku、SageAttention、FlashAttention、InsightFace 與 Trellis2 維持選用，
+因為它們需要與 GPU 架構、PyTorch/CUDA 版本或模型授權相符的額外設定。
 
 ---
 

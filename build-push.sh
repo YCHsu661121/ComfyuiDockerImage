@@ -9,6 +9,8 @@
 #   -c, --cuda <tag>      CUDA base image tag
 #                         預設: 13.0.0-cudnn-runtime-ubuntu24.04
 #   -t, --torch <index>   PyTorch wheel index，預設 cu130
+#   -n, --easy-install-nodes <profile>
+#                         Easy-Install custom-node profile: standard/none
 #       --no-push         只 build，不 push
 #   -h, --help            顯示說明
 #
@@ -25,6 +27,7 @@ IMAGE_NAME="comfyui"
 VERSION=""
 CUDA_TAG="13.0.0-cudnn-runtime-ubuntu24.04"
 TORCH_INDEX="cu130"
+EASY_INSTALL_NODES="standard"
 NO_PUSH=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -42,11 +45,15 @@ while [[ $# -gt 0 ]]; do
         -v|--version)  VERSION="$2";     shift 2 ;;
         -c|--cuda)     CUDA_TAG="$2";    shift 2 ;;
         -t|--torch)    TORCH_INDEX="$2"; shift 2 ;;
+        -n|--easy-install-nodes) EASY_INSTALL_NODES="$2"; shift 2 ;;
         --no-push)     NO_PUSH=true;     shift   ;;
         -h|--help)     usage ;;
         *) die "未知參數: $1，使用 -h 查看說明" ;;
     esac
 done
+
+[[ "$EASY_INSTALL_NODES" == "standard" || "$EASY_INSTALL_NODES" == "none" ]] \
+    || die "--easy-install-nodes 僅接受 standard 或 none"
 
 command -v docker &>/dev/null || die "找不到 docker"
 
@@ -82,6 +89,7 @@ docker build \
     --build-arg "COMFYUI_VERSION=${VERSION}" \
     --build-arg "CUDA_TAG=${CUDA_TAG}" \
     --build-arg "TORCH_INDEX=${TORCH_INDEX}" \
+    --build-arg "EASY_INSTALL_NODES=${EASY_INSTALL_NODES}" \
     -t "${FULL_TAG}" \
     -t "${LATEST_TAG}" \
     -t "${REBUILD_DATA_TAG}" \

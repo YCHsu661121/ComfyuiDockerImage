@@ -12,6 +12,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# Accept legacy `python main.py ...` commands from existing Compose files and
+# docker run invocations while retaining the initialization below.
+if [[ "${1:-}" == "python" && "${2:-}" == "main.py" ]]; then
+    shift 2
+fi
+
 BEST_GPU=0
 
 if command -v nvidia-smi &>/dev/null; then
@@ -31,6 +37,19 @@ if command -v nvidia-smi &>/dev/null; then
 fi
 
 echo "[entrypoint] Detected GPU ${BEST_GPU} as primary (largest VRAM)"
+
+# Seed baked Easy-Install nodes into the persistent mount without replacing user changes.
+if [[ -d /opt/easy-install-custom-nodes ]]; then
+    mkdir -p /app/custom_nodes
+    for node_path in /opt/easy-install-custom-nodes/*; do
+        [[ -d "$node_path" ]] || continue
+        node_name=$(basename "$node_path")
+        if [[ ! -e "/app/custom_nodes/${node_name}" ]]; then
+            cp -a "$node_path" /app/custom_nodes/
+            echo "[entrypoint] Installed bundled custom node: ${node_name}"
+        fi
+    done
+fi
 
 # ── 初始化預設設定（首次啟動或設定檔不存在）───────────────────────────
 SETTINGS_FILE="/app/user/default/comfy.settings.json"

@@ -32,11 +32,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-pip \
         python3-dev \
         build-essential \
+        ffmpeg \
         libgl1 \
         libglib2.0-0 \
         libsm6 \
         libxrender1 \
         libxext6 \
+        sox \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
@@ -57,6 +59,13 @@ RUN python -m pip install --upgrade pip --ignore-installed \
 # ---------- ComfyUI-Manager dependencies ----------
 RUN python -m pip install -r manager_requirements.txt
 
+# ---------- Easy-Install standard custom nodes ----------
+# They are staged outside /app because /app/custom_nodes is a persistent mount.
+ARG EASY_INSTALL_NODES=standard
+COPY easy-install-nodes.sh /usr/local/bin/easy-install-nodes
+RUN chmod +x /usr/local/bin/easy-install-nodes \
+    && /usr/local/bin/easy-install-nodes "${EASY_INSTALL_NODES}"
+
 # ---------- ComfyUI-Crystools dependencies ----------
 # Clone temporarily to get exact requirements; custom_nodes itself is a runtime volume mount
 RUN git clone --depth 1 https://github.com/crystian/ComfyUI-Crystools.git /tmp/crystools \
@@ -76,4 +85,4 @@ EXPOSE 8188
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-CMD ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/entrypoint.sh"]
