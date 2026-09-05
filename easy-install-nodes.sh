@@ -60,6 +60,7 @@ case "${NODES_PROFILE}" in
         install_node https://github.com/matlowai/ComfyUI-MAINodes ComfyUI-MAINodes
         install_node https://github.com/kijai/ComfyUI-SolAttn_triton ComfyUI-SolAttn_triton
         install_node https://github.com/LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler Comfyui_Minimax_h3_latent_Upscaler
+        install_node https://github.com/ethanfel/ComfyUI-MiniMaxH3-Context-Loop ComfyUI-MiniMaxH3-Context-Loop
         ;;
     *)
         echo "Unsupported EASY_INSTALL_NODES profile: ${NODES_PROFILE}" >&2
