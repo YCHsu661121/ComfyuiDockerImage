@@ -33,6 +33,7 @@ case "${NODES_PROFILE}" in
         install_node https://github.com/yolain/ComfyUI-Easy-Use ComfyUI-Easy-Use
         install_node https://github.com/Fannovel16/comfyui_controlnet_aux comfyui_controlnet_aux
         install_node https://github.com/rgthree/rgthree-comfy rgthree-comfy
+        install_node https://github.com/crystian/ComfyUI-Crystools ComfyUI-Crystools
         install_node https://github.com/MohammadAboulEla/ComfyUI-iTools comfyui-itools
         install_node https://github.com/city96/ComfyUI-GGUF ComfyUI-GGUF
         install_node https://github.com/gseth/ControlAltAI-Nodes controlaltai-nodes
