@@ -56,6 +56,7 @@ case "${NODES_PROFILE}" in
         install_node https://github.com/capitan01R/ComfyUI-Krea2T-Enhancer ComfyUI-Krea2T-Enhancer
         install_node https://github.com/lbouaraba/comfyui-krea2edit ComfyUI-Krea2Edit
         install_node https://github.com/WASasquatch/was-node-suite-comfyui was-node-suite-comfyui
+        install_node https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef ComfyUI-H3-Motion-Context-MultiRef
         ;;
     *)
         echo "Unsupported EASY_INSTALL_NODES profile: ${NODES_PROFILE}" >&2
