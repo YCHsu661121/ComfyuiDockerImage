@@ -66,13 +66,6 @@ COPY easy-install-nodes.sh /usr/local/bin/easy-install-nodes
 RUN chmod +x /usr/local/bin/easy-install-nodes \
     && /usr/local/bin/easy-install-nodes "${EASY_INSTALL_NODES}"
 
-# ---------- ComfyUI-Crystools dependencies ----------
-# Clone temporarily to get exact requirements; custom_nodes itself is a runtime volume mount
-RUN git clone --depth 1 https://github.com/crystian/ComfyUI-Crystools.git /tmp/crystools \
-    && pip install --upgrade -r /tmp/crystools/requirements.txt \
-    && pip install psutil \
-    && rm -rf /tmp/crystools
-
 # ---------- Default settings (Crystools monitors enabled) ----------
 COPY default-comfy.settings.json /app/default-comfy.settings.json
 
