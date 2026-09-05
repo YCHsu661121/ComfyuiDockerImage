@@ -57,6 +57,9 @@ case "${NODES_PROFILE}" in
         install_node https://github.com/lbouaraba/comfyui-krea2edit ComfyUI-Krea2Edit
         install_node https://github.com/WASasquatch/was-node-suite-comfyui was-node-suite-comfyui
         install_node https://github.com/seitanism/ComfyUI-H3-Motion-Context-MultiRef ComfyUI-H3-Motion-Context-MultiRef
+        install_node https://github.com/matlowai/ComfyUI-MAINodes ComfyUI-MAINodes
+        install_node https://github.com/kijai/ComfyUI-SolAttn_triton ComfyUI-SolAttn_triton
+        install_node https://github.com/LBH-123-AI/Comfyui_Minimax_h3_latent_Upscaler Comfyui_Minimax_h3_latent_Upscaler
         ;;
     *)
         echo "Unsupported EASY_INSTALL_NODES profile: ${NODES_PROFILE}" >&2
