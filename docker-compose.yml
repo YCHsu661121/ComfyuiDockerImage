@@ -3,7 +3,9 @@
 #   單一容器 (預設使用 GPU 1)：  docker compose up comfyui          → http://localhost:8188
 #   GPU-0 專用容器    ：  docker compose up comfyui-gpu0     → http://localhost:8188
 #   GPU-1 專用容器    ：  docker compose up comfyui-gpu1     → http://localhost:8189
-#   兩張同時跑        ：  docker compose up comfyui-gpu0 comfyui-gpu1
+#   兩張同時跑（各自狜立）：  docker compose up comfyui-gpu0 comfyui-gpu1
+#   兩張 GPU 同時給一個容器（搭配 ComfyUI-MultiGPU 節點分派）：
+#       docker compose --profile multi-gpu up comfyui-multigpu  → http://localhost:8190
 #
 # 注意：CUDA UMD 13.3 驅動向下相容，CUDA 12.6 映像可正常執行。
 #       如需完整 cu130 效能，使用：docker compose build --build-arg CUDA_TAG=13.0
@@ -77,5 +79,26 @@ services:
           devices:
             - driver: nvidia
               device_ids: ["1"]
+              capabilities: [gpu]
+    profiles: [multi-gpu]
+
+  # ── 模式 C：單容器同時看到兩張 GPU，交由 ComfyUI-MultiGPU 節點分派載入 ────────────
+  # entrypoint.sh 偵測到多於 1 張可見 GPU 時會自動不加 --cuda-device，
+  # 讓兩張卡都留給 ComfyUI 進程，在工作流節點上選 cuda:0 / cuda:1 分派模型。
+  comfyui-multigpu:
+    <<: *comfyui-base
+    container_name: comfyui-multigpu
+    ports:
+      - "8190:8188"
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--port", "8188", "--enable-manager"]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=0,1         # 兩張卡同時可見
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0", "1"]
               capabilities: [gpu]
     profiles: [multi-gpu]

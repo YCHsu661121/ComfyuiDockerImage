@@ -1,6 +1,6 @@
 # ============================================================
 # ComfyUI Docker Image — NVIDIA CUDA + Python 3.12
-# Base: ComfyUI v0.27.0 (https://github.com/Comfy-Org/ComfyUI)
+# Base: ComfyUI v0.34.0 (https://github.com/Comfy-Org/ComfyUI)
 #
 # CUDA 版本選擇 (build-arg):
 #   --build-arg CUDA_TAG=12.6.3-cudnn-runtime-ubuntu22.04  (預設，兼容 UMD 13.3)
@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------- Clone ComfyUI ----------
-ARG COMFYUI_VERSION=v0.27.0
+ARG COMFYUI_VERSION=v0.34.0
 WORKDIR /app
 RUN git clone --depth 1 --branch ${COMFYUI_VERSION} \
         https://github.com/Comfy-Org/ComfyUI.git .

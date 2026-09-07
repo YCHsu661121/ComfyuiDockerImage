@@ -15,6 +15,7 @@
 - [啟動方式](#啟動方式)
   - [單 GPU](#單-gpu)
   - [雙 GPU 各自獨立](#雙-gpu-各自獨立)
+  - [雙 GPU 協同（ComfyUI-MultiGPU）](#雙-gpu-協同comfyui-multigpu)
   - [純 CPU（無 GPU）](#純-cpu無-gpu)
 - [Volume 掛載說明](#volume-掛載說明)
 - [常用 CLI 參數](#常用-cli-參數)
@@ -111,8 +112,29 @@ docker compose --profile multi-gpu up -d
 | `comfyui-gpu0` | GPU 0 | http://localhost:8188 |
 | `comfyui-gpu1` | GPU 1 | http://localhost:8189 |
 
-> ComfyUI 是單 GPU 設計，無法在一個實例內同時使用多張 GPU。  
-> 雙 GPU 平行最佳做法為兩個獨立容器。
+> ComfyUI 核心本身是單 GPU 設計，這個模式下兩個實例各自獨立、互不共用顯存，
+> 適合「兩個人各用一張卡」或「兩個工作流各自平行跑」的情境。
+
+---
+
+### 雙 GPU 協同（ComfyUI-MultiGPU）
+
+若想在**同一個** ComfyUI 實例中，把不同模型（例如 UNET、CLIP、VAE）分別載入到
+GPU 0 / GPU 1 以節省單卡顯存或加速，使用 `comfyui-multigpu` 服務：
+
+```bash
+docker compose --profile multi-gpu up -d comfyui-multigpu
+```
+
+瀏覽器開啟 → `http://localhost:8190`
+
+此服務讓容器同時看到兩張 GPU，`entrypoint.sh` 偵測到多於 1 張可見 GPU 時會自動
+不加 `--cuda-device` 限制，兩張卡都留給 ComfyUI 進程。實際分派是在工作流節點上完成：
+映像已內建 [pollockjj/ComfyUI-MultiGPU](https://github.com/pollockjj/ComfyUI-MultiGPU)，
+載入模型的節點（如 `UNETLoaderMultiGPU`、`CLIPLoaderMultiGPU`）會多出 `device` 選項，
+選擇 `cuda:0` 或 `cuda:1` 即可指定該模型載入的顯卡。
+
+> 與「雙 GPU 各自獨立」模式互斥：兩者都會佔用實體 GPU，不建議同時啟動。
 
 ---
 
@@ -222,7 +244,9 @@ ComfyUI-Manager、Easy-Use、ControlNet Aux、rgthree、iTools、GGUF、
 ControlAltAI、Inpaint CropAndStitch、RMBG、VideoHelperSuite、TiledDiffusion、
 KJNodes、WanVideoWrapper、QwenVL、Qwen-TTS、FishAudioS2、SeedVR2、LayerStyle、
 WanAnimatePreprocess、Pixaroma、Easy-Sam3、SCAIL-Pose、MelBandRoFormer、
-Krea2T-Enhancer 與 Krea2Edit。
+Krea2T-Enhancer、Krea2Edit、WAS Node Suite、H3-Motion-Context-MultiRef、
+MAINodes、SolAttn_triton、Minimax-H3-Latent-Upscaler、MiniMaxH3-Context-Loop、
+MultiGPU、MiniMaxH3-Prompt-Writer 與 MiniMaxH3-Director。
 
 節點會先建置到映像內的範本目錄；容器首次啟動時才複製到持久化的
 `/app/custom_nodes` 掛載目錄。既有同名節點不會被覆寫。自訂節點的
