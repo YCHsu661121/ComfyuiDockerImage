@@ -5,7 +5,7 @@
 #
 # Usage : bash build-push.sh [OPTIONS]
 #
-#   -v, --version <tag>   ComfyUI 版本，預設 v0.27.0
+#   -v, --version <tag>   ComfyUI 版本，未指定時自動查詢 GitHub 最新 release
 #   -c, --cuda <tag>      CUDA base image tag
 #                         預設: 13.0.0-cudnn-runtime-ubuntu24.04
 #   -t, --torch <index>   PyTorch wheel index，預設 cu130

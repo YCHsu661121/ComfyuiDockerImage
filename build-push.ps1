@@ -7,7 +7,7 @@
     then pushes all to Docker Hub.
 #>
 param(
-    [string]$Version    = "v0.27.0",
+    [string]$Version    = "v0.34.0",
     [string]$CudaTag    = "13.0.0-cudnn-runtime-ubuntu24.04",
     [string]$TorchIndex = "cu130",
     [ValidateSet("standard", "none")]

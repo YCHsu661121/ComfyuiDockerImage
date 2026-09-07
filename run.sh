@@ -5,7 +5,9 @@
 # Usage : bash run.sh [OPTIONS]
 #
 #   -p, --port <port>     Host port，預設 8188
-#   -g, --gpu <id>        GPU id（0/1/all），預設 all
+#   -g, --gpu <id>        GPU id（0/1/all），預設自動選可用 VRAM 最大的那張
+#                         用 all 可讓兩張卡同時可見，交由 ComfyUI-MultiGPU 節點分派
+#                         （對應 docker-compose.yml 的 comfyui-multigpu 服務）
 #       --cpu             純 CPU 模式（無 GPU）
 #       --pull-only       只 pull，不啟動容器
 #       --rm              容器停止後自動刪除（互動測試用）
@@ -15,6 +17,7 @@
 #   bash run.sh                          # pull latest + 啟動
 #   bash run.sh -p 8080                  # 改 port
 #   bash run.sh -g 1                     # 只用 GPU 1
+#   bash run.sh -g all                   # 兩張 GPU 同時可見（ComfyUI-MultiGPU）
 #   bash run.sh --cpu                    # CPU 模式
 #   bash run.sh --pull-only              # 只更新 image
 # ==============================================================
@@ -170,8 +173,9 @@ fi
 
 # ── 啟動容器 ───────────────────────────────────────────────────
 log "啟動容器..."
-docker run -d "${RUN_ARGS[@]}" "${FULL_IMAGE}" \
-    python main.py --listen 0.0.0.0 --port 8188 --enable-manager ${CMD_EXTRA}
+# entrypoint.sh 會自行組出 --listen/--port/--enable-manager 與 GPU 數量判斷後的
+# --cuda-device，這裡只需要傳遞 CMD_EXTRA（例如 --cpu），避免參數重複。
+docker run -d "${RUN_ARGS[@]}" "${FULL_IMAGE}" ${CMD_EXTRA}
 
 ok "ComfyUI 已啟動！"
 echo ""
