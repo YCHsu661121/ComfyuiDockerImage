@@ -75,6 +75,7 @@ fi
 # 來源: https://huggingface.co/unsloth/gemma-4-12b-it-GGUF
 # 依偵測到的 VRAM 自動挑 quant 等級；沒偵測到 GPU（純 CPU）時不下載。
 # 可用 LLM_QUANT_OVERRIDE 強制指定（例如 UD-Q4_K_XL），跳過自動偵測。
+# 在背景執行，避免大檔案下載卡住 ComfyUI 啟動（多 GPU 也能立即可用）。
 select_llm_quant() {
     local vram_mib="$1"
     if   (( vram_mib >= 28672 )); then echo "UD-Q8_K_XL"
@@ -88,39 +89,42 @@ select_llm_quant() {
 }
 
 if [[ "${SKIP_LLM_DOWNLOAD:-0}" != "1" ]]; then
-    LLM_QUANT="${LLM_QUANT_OVERRIDE:-$(select_llm_quant "${BEST_GPU_VRAM_MIB}")}"
+    (
+        LLM_QUANT="${LLM_QUANT_OVERRIDE:-$(select_llm_quant "${BEST_GPU_VRAM_MIB}")}"
 
-    if [[ -z "$LLM_QUANT" ]]; then
-        echo "[entrypoint] No/insufficient GPU VRAM detected (${BEST_GPU_VRAM_MIB} MiB); skipping Gemma 4 GGUF auto-download"
-    else
-        LLM_DIR="/app/models/LLM/gemma-4-12b"
-        mkdir -p "$LLM_DIR"
+        if [[ -z "$LLM_QUANT" ]]; then
+            echo "[entrypoint] No/insufficient GPU VRAM detected (${BEST_GPU_VRAM_MIB} MiB); skipping Gemma 4 GGUF auto-download"
+        else
+            LLM_DIR="/app/models/LLM/gemma-4-12b"
+            mkdir -p "$LLM_DIR"
 
-        download_llm_file() {
-            local url="$1" dest="$2" label="$3"
-            if [[ -f "$dest" ]]; then
-                return 0
-            fi
-            echo "[entrypoint] Downloading ${label}..."
-            if wget --progress=dot:giga -c -O "${dest}.part" "$url"; then
-                mv "${dest}.part" "$dest"
-            else
-                echo "[entrypoint] WARNING: ${label} download failed, will retry on next start"
-            fi
-        }
+            download_llm_file() {
+                local url="$1" dest="$2" label="$3"
+                if [[ -f "$dest" ]]; then
+                    return 0
+                fi
+                echo "[entrypoint] Downloading ${label}..."
+                if wget --progress=dot:giga -c -O "${dest}.part" "$url"; then
+                    mv "${dest}.part" "$dest"
+                else
+                    echo "[entrypoint] WARNING: ${label} download failed, will retry on next start"
+                fi
+            }
 
-        echo "[entrypoint] Selected Gemma 4 12B quant ${LLM_QUANT} for detected VRAM (${BEST_GPU_VRAM_MIB} MiB)"
+            echo "[entrypoint] Selected Gemma 4 12B quant ${LLM_QUANT} for detected VRAM (${BEST_GPU_VRAM_MIB} MiB)"
 
-        download_llm_file \
-            "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-${LLM_QUANT}.gguf" \
-            "${LLM_DIR}/gemma-4-12b-it-${LLM_QUANT}.gguf" \
-            "Gemma 4 12B GGUF (${LLM_QUANT})"
+            download_llm_file \
+                "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/gemma-4-12b-it-${LLM_QUANT}.gguf" \
+                "${LLM_DIR}/gemma-4-12b-it-${LLM_QUANT}.gguf" \
+                "Gemma 4 12B GGUF (${LLM_QUANT})"
 
-        download_llm_file \
-            "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/mmproj-BF16.gguf" \
-            "${LLM_DIR}/mmproj-BF16.gguf" \
-            "Gemma 4 12B mmproj (BF16, ~175MB)"
-    fi
+            download_llm_file \
+                "https://huggingface.co/unsloth/gemma-4-12b-it-GGUF/resolve/main/mmproj-BF16.gguf" \
+                "${LLM_DIR}/mmproj-BF16.gguf" \
+                "Gemma 4 12B mmproj (BF16, ~175MB)"
+        fi
+    ) &
+    disown
 else
     echo "[entrypoint] SKIP_LLM_DOWNLOAD=1 set; skipping Gemma 4 GGUF auto-download"
 fi
