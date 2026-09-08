@@ -11,6 +11,30 @@
 # 多 GPU  ：docker-compose.yml 中 NVIDIA_VISIBLE_DEVICES=all / device_ids 控制
 # ============================================================
 ARG CUDA_TAG=13.0.0-cudnn-runtime-ubuntu24.04
+# devel 版本才含 nvcc，僅用於建置 llama-cpp-python 的 CUDA wheel
+ARG CUDA_TAG_DEVEL=13.0.0-cudnn-devel-ubuntu24.04
+
+# ---------- Stage 1: 建置 llama-cpp-python（CUDA/GGML_CUDA）wheel ----------
+FROM nvidia/cuda:${CUDA_TAG_DEVEL} AS llama-cpp-builder
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    CMAKE_ARGS="-DGGML_CUDA=on" \
+    FORCE_CMAKE=1
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-dev \
+        git \
+        cmake \
+        ninja-build \
+        build-essential \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m pip install --upgrade pip --ignore-installed \
+    && python -m pip wheel --no-cache-dir --no-deps -w /wheels llama-cpp-python
+
+# ---------- Stage 2: Runtime image ----------
 FROM nvidia/cuda:${CUDA_TAG}
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -58,6 +82,11 @@ RUN python -m pip install --upgrade pip --ignore-installed \
 
 # ---------- ComfyUI-Manager dependencies ----------
 RUN python -m pip install -r manager_requirements.txt
+
+# ---------- llama-cpp-python (CUDA wheel from Stage 1 builder) ----------
+COPY --from=llama-cpp-builder /wheels /tmp/llama-cpp-wheels
+RUN python -m pip install /tmp/llama-cpp-wheels/*.whl \
+    && rm -rf /tmp/llama-cpp-wheels
 
 # ---------- Easy-Install standard custom nodes ----------
 # They are staged outside /app because /app/custom_nodes is a persistent mount.

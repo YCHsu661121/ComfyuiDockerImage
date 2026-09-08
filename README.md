@@ -181,7 +181,49 @@ models/
 ├── unet/          ← 獨立 UNet（Flux 等）
 ├── diffusion_models/
 ├── upscale_models/
-└── embeddings/    ← Textual Inversion
+├── embeddings/    ← Textual Inversion
+└── LLM/           ← llama-cpp-python 用的 GGUF 語言模型（見下方「LLM 自動下載」）
+```
+
+### LLM 自動下載（容器啟動時，依偵測到的 VRAM 自動選 quant）
+
+容器啟動（`docker run` / `docker compose up`）時，`entrypoint.sh` 會用偵測 GPU
+的同一套邏輯讀出 VRAM 大小，自動挑選對應的 Gemma 4 12B quant 等級並下載到
+`/app/models/LLM/gemma-4-12b/`（已存在的檔案不重抓，避免把大型 GGUF 烘進 image）：
+
+| 偵測到的 VRAM | 下載的 quant | 檔案大小 |
+|---|---|---|
+| ≥ 28 GB | `UD-Q8_K_XL` | ~13.6 GB |
+| ≥ 20 GB | `UD-Q6_K_XL` | ~10.7 GB |
+| ≥ 14 GB | `UD-Q5_K_XL` | ~8.6 GB |
+| ≥ 11 GB | `UD-Q4_K_XL` | ~7.4 GB |
+| ≥ 8 GB | `UD-Q3_K_XL` | ~6.0 GB |
+| ≥ 6 GB | `UD-IQ3_XXS` | ~4.6 GB |
+| < 6 GB 或無 GPU | 不下載 | — |
+
+另外固定下載 `mmproj-BF16.gguf`（約 175 MB，供影像輸入用的多模態投影器）。
+
+來源：[unsloth/gemma-4-12b-it-GGUF](https://huggingface.co/unsloth/gemma-4-12b-it-GGUF)，
+供 [ComfyUI-MiniMaxH3-Prompt-Writer](https://github.com/duckyshell/ComfyUI-MiniMaxH3-Prompt-Writer) 的
+Direct GGUF 模式使用。因掛載在 `/app/models` volume，下載一次後重啟容器不會重抓；
+若換到不同 VRAM 等級的機器，會額外下載新等級的檔案，舊檔案需自行清理。
+
+用 `LLM_QUANT_OVERRIDE` 可略過自動偵測、強制指定 quant（例如 `UD-Q6_K_XL`）：
+
+```bash
+docker run -e LLM_QUANT_OVERRIDE=UD-Q6_K_XL ...
+```
+
+
+若不需要、或想離線啟動，設定環境變數關閉：
+
+```bash
+docker run -e SKIP_LLM_DOWNLOAD=1 ...
+```
+
+```yaml
+environment:
+  - SKIP_LLM_DOWNLOAD=1
 ```
 
 ---
@@ -215,32 +257,49 @@ docker run -d --gpus all -p 8188:8188 \
 
 ## 自行 Build & Push
 
-### 預設（CUDA 12.6 + cu126 PyTorch）
+> `build-push.ps1` / `build-push.sh` 已移除，Build + Push 邏輯已併入
+> `auto-update.ps1` / `auto-update.sh`（未指定 `-Version` 時會自動抓 GitHub 最新版）。
+
+### 預設（CUDA 13.0 + cu130 PyTorch）
 
 ```powershell
-.\build-push.ps1
+.\auto-update.ps1 -Force
 ```
 
-### 切換 cu130（CUDA 13.x 最佳化）
+```bash
+bash auto-update.sh --force
+```
 
-適用於 UMD 13.3+ 驅動，可發揮 CUDA 13.0 全效能：
+### 切換 cu126（相容 UMD 12.6）
 
 ```powershell
-.\build-push.ps1 `
-  -CudaTag    "13.0.0-cudnn-runtime-ubuntu24.04" `
-  -TorchIndex "cu130"
+.\auto-update.ps1 -Force `
+  -CudaTag    "12.6.3-cudnn-runtime-ubuntu22.04" `
+  -TorchIndex "cu126"
+```
+
+```bash
+bash auto-update.sh --force --cuda 12.6.3-cudnn-runtime-ubuntu22.04 --torch cu126
 ```
 
 ### 只 Build 不 Push
 
 ```powershell
-.\build-push.ps1 -NoPush
+.\auto-update.ps1 -Force -NoPush
+```
+
+```bash
+bash auto-update.sh --force --no-push
 ```
 
 ### 指定 ComfyUI 版本
 
 ```powershell
-.\build-push.ps1 -Version v0.28.0
+.\auto-update.ps1 -Force -Version v0.28.0
+```
+
+```bash
+bash auto-update.sh --force --version v0.28.0
 ```
 
 ## Easy-Install Custom Nodes
@@ -262,15 +321,22 @@ CUDA PyTorch wheel。
 若只需要基礎 ComfyUI，可在建置時停用這個 profile：
 
 ```powershell
-.\build-push.ps1 -EasyInstallNodes none -NoPush
+.\auto-update.ps1 -EasyInstallNodes none -Force -NoPush
 ```
 
 ```bash
-bash build-push.sh --easy-install-nodes none --no-push
+bash auto-update.sh --easy-install-nodes none --no-push --force
 ```
 
 Nunchaku、SageAttention、FlashAttention、InsightFace 與 Trellis2 維持選用，
 因為它們需要與 GPU 架構、PyTorch/CUDA 版本或模型授權相符的額外設定。
+
+### llama-cpp-python（CUDA 加速，隨映像固定安裝）
+
+映像會以 multi-stage build 先在含 `nvcc` 的 CUDA devel 階段（自動由
+`CUDA_TAG` 推導出對應的 `-devel-` 版本）編譯出啟用 `GGML_CUDA` 的
+`llama-cpp-python` wheel，再安裝進最終的 runtime 映像，讓 GGUF 格式的 LLM
+節點（QwenVL、MAINodes 等）可使用 GPU 推理。因需要編譯，build 時間會拉長。
 
 ---
 
@@ -279,7 +345,7 @@ Nunchaku、SageAttention、FlashAttention、InsightFace 與 Trellis2 維持選�
 `auto-update.bat` / `auto-update.ps1` 會自動：
 1. 查詢 GitHub 最新 Release tag
 2. 檢查 Docker Hub 是否已有該 tag
-3. 若沒有 → 自動執行 `build-push.ps1` 並推送
+3. 若沒有 → 自動 Build + Push（邏輯已內建於 `auto-update.ps1`，不再依賴 `build-push.ps1`）
 
 ### 手動執行
 
@@ -328,8 +394,8 @@ d:\Tools\comfyui\
 ├── Dockerfile              ← 主要建置腳本（ARG 支援 CUDA_TAG / TORCH_INDEX）
 ├── docker-compose.yml      ← 含單 GPU、雙 GPU (profile: multi-gpu) 設定
 ├── .dockerignore           ← 排除 models/output 等大型資料夾
-├── build-push.ps1          ← 一鍵 Build + Push 的 PowerShell 腳本
-├── auto-update.ps1         ← 自動偵測 GitHub 新版並 Build & Push
+├── auto-update.ps1         ← 自動偵測 GitHub 新版並 Build & Push（含 Build+Push 邏輯）
+├── auto-update.sh          ← auto-update.ps1 的 Linux/bash 版本
 ├── auto-update.bat         ← auto-update.ps1 的 .bat 包裝（雙擊或排程用）
 ├── register-schedule.ps1   ← 將 auto-update.bat 登錄到工作排程器
 ├── auto-update.log         ← (執行後產生) 自動更新記錄
@@ -388,5 +454,6 @@ A: 重新 build image 並確認 `TORCH_INDEX=cu126`（或 `cu130`）。
 ---
 
 **Q: 想要用最新的 ComfyUI 版本**  
-A: 執行 `.\build-push.ps1 -Version v0.28.0`（替換為最新 tag）。  
+A: 執行 `.\auto-update.ps1 -Force`（或 `bash auto-update.sh --force`）即會自動抓取 GitHub
+   最新 Release 並重建；也可用 `-Version v0.28.0` / `--version v0.28.0` 指定特定版本。  
    最新版本請查看：https://github.com/Comfy-Org/ComfyUI/releases

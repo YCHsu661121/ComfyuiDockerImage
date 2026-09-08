@@ -6,15 +6,19 @@
 # 流程：
 #   1. 查詢 GitHub 最新 Release tag
 #   2. 查詢 Docker Hub 該 tag 是否已存在
-#   3. 若不存在 → 呼叫 build-push.sh Build + Push
+#   3. 若不存在 → Build + Push（邏輯已內建，不再依賴 build-push.sh）
 #   4. 記錄至 auto-update.log
 #
 # Usage : bash auto-update.sh [OPTIONS]
 #
 #   -f, --force       強制重建（即使 tag 已存在）
 #   -c, --check-only  只查版本，不 Build
+#   -v, --version     指定 ComfyUI 版本（未指定則自動查詢 GitHub 最新 Release）
 #   -t, --torch       PyTorch wheel index，預設 cu130
 #       --cuda        CUDA base image tag
+#   -n, --easy-install-nodes <profile>
+#                     Easy-Install custom-node profile: standard/none，預設 standard
+#       --no-push     只 build，不 push
 #   -h, --help        顯示說明
 #
 # 搭配 cron 排程（每週一 08:00）：
@@ -31,8 +35,11 @@ HUB_REPO="comfyui"
 GITHUB_REPO="Comfy-Org/ComfyUI"
 CUDA_TAG="13.0.0-cudnn-runtime-ubuntu24.04"
 TORCH_INDEX="cu130"
+EASY_INSTALL_NODES="standard"
 FORCE=false
 CHECK_ONLY=false
+NO_PUSH=false
+VERSION_OVERRIDE=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="${SCRIPT_DIR}/auto-update.log"
 VERSION_FILE="${SCRIPT_DIR}/.last-built-version"
@@ -46,25 +53,35 @@ ok()   { local m="[$(_ts)][ OK  ] $*"; echo -e "${GREEN}${m}${RESET}"; echo "$m"
 warn() { local m="[$(_ts)][WARN ] $*"; echo -e "${YELLOW}${m}${RESET}"; echo "$m" >> "$LOG_FILE"; }
 die()  { local m="[$(_ts)][ERROR] $*"; echo -e "${RED}${m}${RESET}" >&2; echo "$m" >> "$LOG_FILE"; exit 1; }
 
-usage() { sed -n '3,26p' "$0" | sed 's/^# \?//'; exit 0; }
+usage() { sed -n '3,28p' "$0" | sed 's/^# \?//'; exit 0; }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -f|--force)      FORCE=true;        shift   ;;
         -c|--check-only) CHECK_ONLY=true;   shift   ;;
+        -v|--version)    VERSION_OVERRIDE="$2"; shift 2 ;;
         -t|--torch)      TORCH_INDEX="$2";  shift 2 ;;
         --cuda)          CUDA_TAG="$2";     shift 2 ;;
+        -n|--easy-install-nodes) EASY_INSTALL_NODES="$2"; shift 2 ;;
+        --no-push)       NO_PUSH=true;      shift   ;;
         -h|--help)       usage ;;
         *) die "未知參數: $1，使用 -h 查看說明" ;;
     esac
 done
+
+[[ "$EASY_INSTALL_NODES" == "standard" || "$EASY_INSTALL_NODES" == "none" ]] \
+    || die "--easy-install-nodes 僅接受 standard 或 none"
 
 command -v docker &>/dev/null || die "找不到 docker"
 command -v curl   &>/dev/null || die "找不到 curl，請執行: apt-get install -y curl"
 
 log "=== ComfyUI Docker Auto-Update 開始 ==="
 
-# ── Step 1：查 GitHub 最新 Release ────────────────────────────
+# ── Step 1：查 GitHub 最新 Release（或使用 --version 指定版本）───
+if [[ -n "$VERSION_OVERRIDE" ]]; then
+    LATEST_VERSION="$VERSION_OVERRIDE"
+    log "使用手動指定版本: ${LATEST_VERSION}"
+else
 log "查詢 GitHub 最新 Release: ${GITHUB_REPO}"
 
 GH_HEADERS=(-H "User-Agent: ComfyUI-Docker-AutoUpdate/1.0" -H "Accept: application/vnd.github.v3+json")
@@ -79,6 +96,7 @@ RELEASE_DATE=$(echo  "$GH_JSON"  | grep -m1 '"published_at"' | sed 's/.*"publish
 [[ -z "$LATEST_VERSION" ]] && die "無法解析 GitHub Release tag"
 
 log "GitHub 最新版本: ${LATEST_VERSION}（發布於 ${RELEASE_DATE}）"
+fi
 
 [[ "$CHECK_ONLY" == true ]] && {
     CURRENT_VERSION=$([[ -f "$VERSION_FILE" ]] && cat "$VERSION_FILE" || echo "（未記錄）")
@@ -114,18 +132,40 @@ if [[ "$TAG_EXISTS" == true && "$FORCE" == false ]]; then
 fi
 [[ "$TAG_EXISTS" == true && "$FORCE" == true ]] && warn "--force 指定，強制重建 ${VERSIONED_TAG}"
 
-# ── Step 4：呼叫 build-push.sh ───────────────────────────────
-BUILD_SCRIPT="${SCRIPT_DIR}/build-push.sh"
-[[ -f "$BUILD_SCRIPT" ]] || die "找不到 build-push.sh: ${BUILD_SCRIPT}"
+# ── Step 4：Build & Push（原 build-push.sh 邏輯已內建於此）───
+DATE_SUFFIX=$(date +%m%d)
+FULL_TAG="${HUB_USER}/${HUB_REPO}:${LATEST_VERSION}-${TORCH_INDEX}-${DATE_SUFFIX}"
+LATEST_TAG="${HUB_USER}/${HUB_REPO}:latest"
+REBUILD_DATA_TAG="${HUB_USER}/${HUB_REPO}:rebuild-data"
+# devel tag 用於建置 llama-cpp-python 的 CUDA wheel（含 nvcc）
+CUDA_TAG_DEVEL="${CUDA_TAG/runtime/devel}"
 
-log "開始 Build & Push: ${LATEST_VERSION} (CUDA: ${CUDA_TAG}, Torch: ${TORCH_INDEX})"
+log "開始 Build: ${LATEST_VERSION} (CUDA: ${CUDA_TAG}, Torch: ${TORCH_INDEX}, Nodes: ${EASY_INSTALL_NODES})"
+log "Tags: ${FULL_TAG} / ${LATEST_TAG} / ${REBUILD_DATA_TAG}"
 
-bash "$BUILD_SCRIPT" \
-    --version "$LATEST_VERSION" \
-    --cuda    "$CUDA_TAG" \
-    --torch   "$TORCH_INDEX"
+docker build \
+    --platform linux/amd64 \
+    --build-arg "COMFYUI_VERSION=${LATEST_VERSION}" \
+    --build-arg "CUDA_TAG=${CUDA_TAG}" \
+    --build-arg "CUDA_TAG_DEVEL=${CUDA_TAG_DEVEL}" \
+    --build-arg "TORCH_INDEX=${TORCH_INDEX}" \
+    --build-arg "EASY_INSTALL_NODES=${EASY_INSTALL_NODES}" \
+    -t "$FULL_TAG" \
+    -t "$LATEST_TAG" \
+    -t "$REBUILD_DATA_TAG" \
+    "$SCRIPT_DIR" \
+    || die "Docker build 失敗"
 
-ok "Build & Push 成功: ${HUB_USER}/${HUB_REPO}:${VERSIONED_TAG}"
+ok "Build 完成: ${FULL_TAG}"
+
+if [[ "$NO_PUSH" == true ]]; then
+    warn "--no-push 指定，跳過 push。"
+else
+    docker push "$FULL_TAG"         || die "Push 失敗: ${FULL_TAG}"
+    docker push "$LATEST_TAG"       || die "Push 失敗: ${LATEST_TAG}"
+    docker push "$REBUILD_DATA_TAG" || die "Push 失敗: ${REBUILD_DATA_TAG}"
+    ok "Build & Push 成功: ${FULL_TAG}"
+fi
 
 # ── Step 5：記錄版本 ──────────────────────────────────────────
 echo "${VERSIONED_TAG}" > "$VERSION_FILE"

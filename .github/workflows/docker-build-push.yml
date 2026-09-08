@@ -4,7 +4,7 @@ name: Build & Push Docker Image
 # 觸發時機：
 #   1. 手動觸發 (workflow_dispatch) — 可自訂版本/CUDA/Torch
 #   2. 每週一 08:00 UTC 自動檢查 ComfyUI 是否有新版本
-#   3. Dockerfile / build-push.sh 有變動時自動觸發
+#   3. Dockerfile / auto-update.sh 有變動時自動觸發
 # ──────────────────────────────────────────────────────────────────
 on:
   workflow_dispatch:
@@ -35,7 +35,7 @@ on:
     branches: [main]
     paths:
       - 'Dockerfile'
-      - 'build-push.sh'
+      - 'auto-update.sh'
       - '.github/workflows/docker-build-push.yml'
 
 env:

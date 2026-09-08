@@ -6,8 +6,12 @@
 param(
     [switch]$Force,
     [switch]$CheckOnly,
+    [string]$Version    = "",
     [string]$CudaTag    = "13.0.0-cudnn-runtime-ubuntu24.04",
-    [string]$TorchIndex = "cu130"
+    [string]$TorchIndex = "cu130",
+    [ValidateSet("standard", "none")]
+    [string]$EasyInstallNodes = "standard",
+    [switch]$NoPush
 )
 
 Set-StrictMode -Version Latest
@@ -43,30 +47,38 @@ function Invoke-ApiGet {
     }
 }
 
-# -- Step 1: Get Latest Release from GitHub --
+# -- Step 1: Get Latest Release from GitHub (or use -Version override) --
 Write-Log "=== ComfyUI Docker Auto-Update Start ==="
-Write-Log "Checking GitHub latest release: $GithubRepo"
 
-$ghUrl     = "https://api.github.com/repos/$GithubRepo/releases/latest"
-$ghHeaders = @{ "User-Agent" = "ComfyUI-Docker-AutoUpdate/1.0" }
+if ($Version) {
+    $latestVersion = $Version
+    $releaseDate   = "manual"
+    $releaseUrl    = ""
+    Write-Log "Using manually specified version: $latestVersion"
+} else {
+    Write-Log "Checking GitHub latest release: $GithubRepo"
 
-if ($env:GITHUB_TOKEN) {
-    $ghHeaders["Authorization"] = "Bearer $env:GITHUB_TOKEN"
-    Write-Log "Using GITHUB_TOKEN for authentication"
+    $ghUrl     = "https://api.github.com/repos/$GithubRepo/releases/latest"
+    $ghHeaders = @{ "User-Agent" = "ComfyUI-Docker-AutoUpdate/1.0" }
+
+    if ($env:GITHUB_TOKEN) {
+        $ghHeaders["Authorization"] = "Bearer $env:GITHUB_TOKEN"
+        Write-Log "Using GITHUB_TOKEN for authentication"
+    }
+
+    try {
+        $release       = Invoke-ApiGet -Url $ghUrl -Headers $ghHeaders
+        $latestVersion = $release.tag_name
+        $releaseDate   = $release.published_at
+        $releaseUrl    = $release.html_url
+    } catch {
+        Write-Log "Failed to fetch GitHub release: $_" "ERROR"
+        exit 1
+    }
+
+    Write-Log "Latest GitHub Version: $latestVersion (Released: $releaseDate)"
+    Write-Log "Release URL: $releaseUrl"
 }
-
-try {
-    $release       = Invoke-ApiGet -Url $ghUrl -Headers $ghHeaders
-    $latestVersion = $release.tag_name
-    $releaseDate   = $release.published_at
-    $releaseUrl    = $release.html_url
-} catch {
-    Write-Log "Failed to fetch GitHub release: $_" "ERROR"
-    exit 1
-}
-
-Write-Log "Latest GitHub Version: $latestVersion (Released: $releaseDate)"
-Write-Log "Release URL: $releaseUrl"
 
 if ($CheckOnly) {
     Write-Log "CheckOnly mode enabled. Skipping Build and Push." "WARN"
@@ -94,25 +106,46 @@ if ($Force -and $lastBuilt -eq $latestVersion) {
     Write-Log "-Force flag detected. Forcing rebuild for $latestVersion" "WARN"
 }
 
-# -- Step 4: Call build-push.ps1 --
-$buildScript = Join-Path $ScriptDir "build-push.ps1"
-if (-not (Test-Path $buildScript)) {
-    Write-Log "Missing build-push.ps1 at: $buildScript" "ERROR"
-    exit 1
-}
+# -- Step 4: Build & Push (logic merged in, no longer calls build-push.ps1) --
+# Tag format: ${Version}-${TorchIndex}-${MMdd}，例如 v0.31.0-cu130-0811
+$dateSuffix     = Get-Date -Format "MMdd"
+$fullTag        = "${HubUser}/${HubRepo}:${latestVersion}-${TorchIndex}-${dateSuffix}"
+$latestTag      = "${HubUser}/${HubRepo}:latest"
+$rebuildDataTag = "${HubUser}/${HubRepo}:rebuild-data"
+# devel tag 才含 nvcc，用於建置 llama-cpp-python 的 CUDA wheel
+$cudaTagDevel   = $CudaTag -replace "runtime", "devel"
 
-Write-Log "Starting Build and Push process: $latestVersion (CUDA: $CudaTag, Torch: $TorchIndex)"
+Write-Log "Starting Build: $latestVersion (CUDA: $CudaTag, Torch: $TorchIndex, Nodes: $EasyInstallNodes)"
+Write-Log "Tags: $fullTag / $latestTag / $rebuildDataTag"
 
 try {
-    # 將 Version 傳遞給 build-push.ps1，由其負責附加日期後綴
-    & $buildScript `
-        -Version    $latestVersion `
-        -CudaTag    $CudaTag `
-        -TorchIndex $TorchIndex
+    $buildArgs = @(
+        "build",
+        "--platform", "linux/amd64",
+        "--build-arg", "COMFYUI_VERSION=$latestVersion",
+        "--build-arg", "CUDA_TAG=$CudaTag",
+        "--build-arg", "CUDA_TAG_DEVEL=$cudaTagDevel",
+        "--build-arg", "TORCH_INDEX=$TorchIndex",
+        "--build-arg", "EASY_INSTALL_NODES=$EasyInstallNodes",
+        "-t", $fullTag,
+        "-t", $latestTag,
+        "-t", $rebuildDataTag,
+        $ScriptDir
+    )
+    docker @buildArgs
+    if ($LASTEXITCODE -ne 0) { throw "Docker build failed (exit code: $LASTEXITCODE)" }
 
-    if ($LASTEXITCODE -ne 0) { throw "build-push.ps1 exited with code: $LASTEXITCODE" }
+    Write-Log "Build complete: $fullTag" "OK"
 
-    Write-Log "Build and Push successful: ${HubUser}/${HubRepo}:${latestVersion}" "OK"
+    if ($NoPush) {
+        Write-Log "-NoPush specified. Skipping push phase." "WARN"
+    } else {
+        foreach ($tag in @($fullTag, $latestTag, $rebuildDataTag)) {
+            docker push $tag
+            if ($LASTEXITCODE -ne 0) { throw "Docker push failed for $tag (exit code: $LASTEXITCODE)" }
+        }
+        Write-Log "Build and Push successful: $fullTag" "OK"
+    }
 } catch {
     Write-Log "Build and Push failed: $_" "ERROR"
     exit 1
