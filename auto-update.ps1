@@ -80,6 +80,12 @@ if ($Version) {
     Write-Log "Release URL: $releaseUrl"
 }
 
+# 防呆：-Version 誤填 URL 或 GitHub API 解析失敗，會做出無效的 docker tag
+if ([string]::IsNullOrEmpty($latestVersion) -or $latestVersion -match "://" -or $latestVersion -match "/") {
+    Write-Log "Resolved version is invalid: '$latestVersion' (must be a tag like v0.34.0, not a URL)" "ERROR"
+    exit 1
+}
+
 if ($CheckOnly) {
     Write-Log "CheckOnly mode enabled. Skipping Build and Push." "WARN"
     exit 0

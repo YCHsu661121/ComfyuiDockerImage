@@ -66,6 +66,13 @@ jobs:
             VERSION=$(curl -fsSL https://api.github.com/repos/Comfy-Org/ComfyUI/releases/latest \
                       | jq -r '.tag_name')
           fi
+          # 防呆：comfyui_version 若誤填成 URL 或解析失敗，會做出無效的 docker tag
+          case "$VERSION" in
+            *://*|*/*|""|null)
+              echo "::error::Invalid ComfyUI version resolved: '$VERSION' (must be a tag like v0.34.0, not a URL)"
+              exit 1
+              ;;
+          esac
           TORCH="${{ github.event.inputs.torch_index || env.TORCH_INDEX }}"
           VERSIONED_TAG="${VERSION}-${TORCH}"
           echo "version=$VERSION"        >> "$GITHUB_OUTPUT"

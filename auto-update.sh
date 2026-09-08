@@ -98,6 +98,13 @@ RELEASE_DATE=$(echo  "$GH_JSON"  | grep -m1 '"published_at"' | sed 's/.*"publish
 log "GitHub 最新版本: ${LATEST_VERSION}（發布於 ${RELEASE_DATE}）"
 fi
 
+# 防呆：--version 誤填 URL 或 GitHub API 解析失敗，會做出無效的 docker tag
+case "$LATEST_VERSION" in
+    *://*|*/*|""|null)
+        die "解析出的版本無效: '${LATEST_VERSION}'（需為 v0.34.0 這類 tag，不可為 URL）"
+        ;;
+esac
+
 [[ "$CHECK_ONLY" == true ]] && {
     CURRENT_VERSION=$([[ -f "$VERSION_FILE" ]] && cat "$VERSION_FILE" || echo "（未記錄）")
     echo "  最新版本 : ${LATEST_VERSION}"
