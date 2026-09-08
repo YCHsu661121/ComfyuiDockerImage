@@ -141,7 +141,9 @@ docker compose --profile multi-gpu up -d comfyui-multigpu
 
 > 與「雙 GPU 各自獨立」模式互斥：兩者都會佔用實體 GPU，不建議同時啟動。
 
-不使用 docker-compose 的話，`run.sh` 也支援同樣的效果：
+不使用 docker-compose 的話，`run.sh` 也支援同樣的效果，容器名稱／port 會自動改用
+`comfyui-multigpu` / `8190`（對應 compose 的 `comfyui-multigpu` 服務），可與單 GPU
+的 `comfyui` 容器同時並存：
 
 ```bash
 bash run.sh -g all

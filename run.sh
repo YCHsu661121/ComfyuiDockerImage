@@ -4,10 +4,12 @@
 # Image : superyc1121/comfyui:latest
 # Usage : bash run.sh [OPTIONS]
 #
-#   -p, --port <port>     Host port，預設 8188
+#   -p, --port <port>     Host port，預設 8188（-g all 時預設改為 8190）
 #   -g, --gpu <id>        GPU id（0/1/all），預設自動選可用 VRAM 最大的那張
-#                         用 all 可讓兩張卡同時可見，交由 ComfyUI-MultiGPU 節點分派
-#                         （對應 docker-compose.yml 的 comfyui-multigpu 服務）
+#                         用 all 可讓兩張卡同時可見，交由 ComfyUI-MultiGPU 節點分派，
+#                         容器名稱／port 會改用 comfyui-multigpu / 8190，
+#                         對應 docker-compose.yml 的 comfyui-multigpu 服務，
+#                         可與單 GPU 的 comfyui 容器同時並存
 #       --cpu             純 CPU 模式（無 GPU）
 #       --pull-only       只 pull，不啟動容器
 #       --rm              容器停止後自動刪除（互動測試用）
@@ -17,7 +19,7 @@
 #   bash run.sh                          # pull latest + 啟動
 #   bash run.sh -p 8080                  # 改 port
 #   bash run.sh -g 1                     # 只用 GPU 1
-#   bash run.sh -g all                   # 兩張 GPU 同時可見（ComfyUI-MultiGPU）
+#   bash run.sh -g all                   # comfyui-multigpu 容器，兩張 GPU 同時可見
 #   bash run.sh --cpu                    # CPU 模式
 #   bash run.sh --pull-only              # 只更新 image
 # ==============================================================
@@ -26,6 +28,7 @@ set -euo pipefail
 # ── 預設值 ────────────────────────────────────────────────────
 HUB_IMAGE="superyc1121/comfyui"
 HOST_PORT=8188
+PORT_EXPLICIT=false
 GPU_ID=""
 GPU_AUTO=true
 CPU_MODE=false
@@ -50,13 +53,13 @@ die()  { echo -e "${RED}[ERR ]${RESET} $*" >&2; exit 1; }
 
 # ── 參數解析 ──────────────────────────────────────────────────
 usage() {
-    sed -n '3,20p' "$0" | sed 's/^# \?//'
+    sed -n '3,23p' "$0" | sed 's/^# \?//'
     exit 0
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        -p|--port)      HOST_PORT="$2"; shift 2 ;;
+        -p|--port)      HOST_PORT="$2"; PORT_EXPLICIT=true; shift 2 ;;
         -g|--gpu)       GPU_ID="$2"; GPU_AUTO=false; shift 2 ;;
         --cpu)          CPU_MODE=true;  shift   ;;
         --pull-only)    PULL_ONLY=true; shift   ;;
@@ -115,22 +118,8 @@ ok "Pull 完成: ${FULL_IMAGE}"
 
 [[ "$PULL_ONLY" == true ]] && { ok "--pull-only 模式，結束。"; exit 0; }
 
-# ── 組裝 docker run 參數 ───────────────────────────────────────
-CONTAINER_NAME="comfyui"
-RUN_ARGS=(
-    --name  "${CONTAINER_NAME}"
-    --restart unless-stopped
-    -p      "${HOST_PORT}:8188"
-    -v      "${MODELS_DIR}:/app/models"
-    -v      "${OUTPUT_DIR}:/app/output"
-    -v      "${INPUT_DIR}:/app/input"
-    -v      "${NODES_DIR}:/app/custom_nodes"
-    -v      "${USER_DIR}:/app/user"
-)
-
-[[ "$AUTO_REMOVE" == true ]] && RUN_ARGS+=(--rm) && unset 'RUN_ARGS[1]' 'RUN_ARGS[2]'  # 移除 --restart
-
-# GPU 設定
+# GPU 設定（先決定，才能依此挑選對應 docker-compose.yml 服務的容器名稱／port）
+GPU_ARGS=()
 if [[ "$CPU_MODE" == true ]]; then
     warn "CPU 模式（無 GPU），速度較慢"
     CMD_EXTRA="--cpu"
@@ -154,15 +143,40 @@ else
     fi
 
     if [[ "$GPU_ID" == "all" ]]; then
-        RUN_ARGS+=(--gpus all)
-        RUN_ARGS+=(-e NVIDIA_VISIBLE_DEVICES=all)
+        GPU_ARGS+=(--gpus all)
+        GPU_ARGS+=(-e NVIDIA_VISIBLE_DEVICES=all)
     else
-        RUN_ARGS+=(--gpus "device=${GPU_ID}")
-        RUN_ARGS+=(-e "NVIDIA_VISIBLE_DEVICES=${GPU_ID}")
+        GPU_ARGS+=(--gpus "device=${GPU_ID}")
+        GPU_ARGS+=(-e "NVIDIA_VISIBLE_DEVICES=${GPU_ID}")
     fi
-    RUN_ARGS+=(-e NVIDIA_DRIVER_CAPABILITIES=compute,utility)
+    GPU_ARGS+=(-e NVIDIA_DRIVER_CAPABILITIES=compute,utility)
     CMD_EXTRA=""
 fi
+
+# 雙 GPU 協同（ComfyUI-MultiGPU）：對應 docker-compose.yml 的 comfyui-multigpu 服務，
+# 用獨立的容器名稱／port，才能跟單 GPU 的 comfyui 容器同時並存、互不覆蓋。
+CONTAINER_NAME="comfyui"
+if [[ "$GPU_ID" == "all" ]]; then
+    CONTAINER_NAME="comfyui-multigpu"
+    if [[ "$PORT_EXPLICIT" == false ]]; then
+        HOST_PORT=8190
+    fi
+fi
+
+# ── 組裝 docker run 參數 ───────────────────────────────────────
+RUN_ARGS=(
+    --name  "${CONTAINER_NAME}"
+    --restart unless-stopped
+    -p      "${HOST_PORT}:8188"
+    -v      "${MODELS_DIR}:/app/models"
+    -v      "${OUTPUT_DIR}:/app/output"
+    -v      "${INPUT_DIR}:/app/input"
+    -v      "${NODES_DIR}:/app/custom_nodes"
+    -v      "${USER_DIR}:/app/user"
+    "${GPU_ARGS[@]}"
+)
+
+[[ "$AUTO_REMOVE" == true ]] && RUN_ARGS+=(--rm) && unset 'RUN_ARGS[1]' 'RUN_ARGS[2]'  # 移除 --restart
 
 # ── 若同名容器已存在，先移除 ──────────────────────────────────
 if docker ps -a --format '{{.Names}}' | grep -qx "${CONTAINER_NAME}"; then
