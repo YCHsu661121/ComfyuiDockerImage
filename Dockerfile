@@ -66,6 +66,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
+# runtime 版 CUDA image 只附帶版號化的 libcudart.so.13，缺少無版號符號連結，
+# 會導致 ComfyUI-MultiGPU 的 P2P 偵測（ctypes.CDLL("libcudart.so")）失敗。
+RUN CUDART_LIB="$(find /usr /usr/local/cuda -name 'libcudart.so.*' 2>/dev/null | sort -V | tail -n1)" \
+    && if [ -n "$CUDART_LIB" ]; then \
+        ln -sf "$CUDART_LIB" /usr/lib/x86_64-linux-gnu/libcudart.so && ldconfig; \
+       else \
+        echo "WARN: libcudart.so.* not found, MultiGPU P2P check may fail" >&2; \
+       fi
+
 # ---------- Clone ComfyUI ----------
 ARG COMFYUI_VERSION=v0.34.0
 WORKDIR /app
