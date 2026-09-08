@@ -104,8 +104,13 @@ docker run -d \
 兩個容器各鎖定一張 GPU，分別提供獨立的 ComfyUI 實例：
 
 ```bash
-docker compose --profile multi-gpu up -d
+docker compose --profile multi-gpu up -d comfyui-gpu0 comfyui-gpu1
 ```
+
+> 務必指定服務名稱。若省略（`docker compose --profile multi-gpu up -d`），
+> Compose 會連同沒有 profile 的預設 `comfyui` 服務、以及同屬 `multi-gpu`
+> profile 的 `comfyui-multigpu` 一起啟動，四個容器搶同一張 GPU 與
+> port 8188，一定會啟動失敗。
 
 | 容器 | GPU | 網址 |
 |------|-----|------|
