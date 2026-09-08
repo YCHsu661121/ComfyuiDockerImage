@@ -460,6 +460,15 @@ A: 重新 build image 並確認 `TORCH_INDEX=cu126`（或 `cu130`）。
 
 ---
 
+**Q: `Could not acquire lock on database '/app/user/comfyui.db'`**  
+A: 多個容器（例如 `comfyui` 與 `comfyui-multigpu`）共用同一個 `/mnt/comfyui/user` 掛載目錄，
+   若同時啟動會搶同一個 SQLite db 檔案的鎖。`docker-compose.yml` 各服務已各自設定
+   `COMFYUI_DB_NAME` 環境變數，`entrypoint.sh` 會依此產生獨立的
+   `--database-url sqlite:////app/user/comfyui-<name>.db`，不再共用同一個 db 檔。
+   若用 `run.sh` 啟動也會自動帶入對應的容器名稱；只需重新 pull 更新後的 image 並重建容器即可。
+
+---
+
 **Q: 想要用最新的 ComfyUI 版本**  
 A: 執行 `.\auto-update.ps1 -Force`（或 `bash auto-update.sh --force`）即會自動抓取 GitHub
    最新 Release 並重建；也可用 `-Version v0.28.0` / `--version v0.28.0` 指定特定版本。  

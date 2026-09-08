@@ -37,6 +37,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=1          # 只看到 GPU 1
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - COMFYUI_DB_NAME=comfyui
     deploy:
       resources:
         reservations:
@@ -55,6 +56,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=0          # 只看到 GPU 0
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - COMFYUI_DB_NAME=comfyui-gpu0
     deploy:
       resources:
         reservations:
@@ -73,6 +75,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=1          # 只看到 GPU 1
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - COMFYUI_DB_NAME=comfyui-gpu1
     deploy:
       resources:
         reservations:
@@ -94,6 +97,7 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=0,1         # 兩張卡同時可見
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - COMFYUI_DB_NAME=comfyui-multigpu
     deploy:
       resources:
         reservations:

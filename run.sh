@@ -173,6 +173,7 @@ RUN_ARGS=(
     -v      "${INPUT_DIR}:/app/input"
     -v      "${NODES_DIR}:/app/custom_nodes"
     -v      "${USER_DIR}:/app/user"
+    -e      "COMFYUI_DB_NAME=${CONTAINER_NAME}"
     "${GPU_ARGS[@]}"
 )
 

@@ -49,6 +49,13 @@ else
     echo "[entrypoint] Detected ${GPU_COUNT} visible GPUs; leaving all visible for ComfyUI-MultiGPU node dispatch (primary candidate: GPU ${BEST_GPU})"
 fi
 
+# 多個容器共用同一個 /app/user 掛載時，ComfyUI 的 SQLite db 檔會搶鎖，
+# 依 COMFYUI_DB_NAME（沒設就用 hostname，即 container name）各自分開一個檔案。
+DATABASE_URL_ARGS=()
+DB_NAME="${COMFYUI_DB_NAME:-$(hostname)}"
+DATABASE_URL_ARGS=(--database-url "sqlite:////app/user/comfyui-${DB_NAME}.db")
+echo "[entrypoint] Using database file: comfyui-${DB_NAME}.db"
+
 # Seed baked Easy-Install nodes into the persistent mount without replacing user changes.
 if [[ -d /opt/easy-install-custom-nodes ]]; then
     mkdir -p /app/custom_nodes
@@ -133,5 +140,6 @@ exec python main.py \
     --listen 0.0.0.0 \
     --port 8188 \
     "${CUDA_DEVICE_ARGS[@]}" \
+    "${DATABASE_URL_ARGS[@]}" \
     --enable-manager \
     "$@"
