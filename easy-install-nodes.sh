@@ -29,7 +29,7 @@ case "${NODES_PROFILE}" in
         exit 0
         ;;
     standard)
-        install_node https://github.com/Comfy-Org/ComfyUI-Manager comfyui-manager
+        # ComfyUI-Manager 已由 --enable-manager 內建提供，安裝獨立版會被核心政策封鎖，故省略
         install_node https://github.com/yolain/ComfyUI-Easy-Use ComfyUI-Easy-Use
         install_node https://github.com/Fannovel16/comfyui_controlnet_aux comfyui_controlnet_aux
         install_node https://github.com/rgthree/rgthree-comfy rgthree-comfy
@@ -64,6 +64,8 @@ case "${NODES_PROFILE}" in
         install_node https://github.com/pollockjj/ComfyUI-MultiGPU ComfyUI-MultiGPU
         install_node https://github.com/duckyshell/ComfyUI-MiniMaxH3-Prompt-Writer ComfyUI-MiniMaxH3-Prompt-Writer
         install_node https://github.com/AIMixer/ComfyUI_MiniMaxH3_Director ComfyUI_MiniMaxH3_Director
+        install_node https://github.com/oufeixinxinren/ComfyUI-MiniMax-ContextIR ComfyUI-MiniMax-ContextIR
+        install_node https://github.com/pythongosssss/ComfyUI-Custom-Scripts ComfyUI-Custom-Scripts
         ;;
     *)
         echo "Unsupported EASY_INSTALL_NODES profile: ${NODES_PROFILE}" >&2
