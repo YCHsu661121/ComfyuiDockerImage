@@ -39,6 +39,7 @@ RUN python -m pip install --upgrade pip --ignore-installed \
     && python -m pip wheel --no-cache-dir --no-deps -w /wheels llama-cpp-python
 
 # ---------- Stage 2: 建置 SageAttention（可選，CUDA wheel）----------
+# PyTorch 2.9+ 標頭需要 C++20，但 SageAttention setup.py 寫死 -std=c++17，故建置時會 sed 覆寫。
 FROM nvidia/cuda:${CUDA_TAG_DEVEL} AS sageattention-builder
 ARG INSTALL_SAGEATTENTION
 ARG TORCH_INDEX=cu130
@@ -56,6 +57,7 @@ RUN mkdir -p /wheels \
         && python -m pip install setuptools wheel packaging ninja \
         && python -m pip install torch --extra-index-url https://download.pytorch.org/whl/${TORCH_INDEX} \
         && git clone --depth 1 https://github.com/thu-ml/SageAttention.git /tmp/SageAttention \
+        && sed -i 's/std=c++17/std=c++20/g' /tmp/SageAttention/setup.py \
         && TORCH_CUDA_ARCH_LIST="${SAGEATTENTION_ARCH_LIST}" python -m pip wheel --no-cache-dir --no-build-isolation --no-deps -w /wheels /tmp/SageAttention \
         && rm -rf /tmp/SageAttention; \
     else \
