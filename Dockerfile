@@ -49,13 +49,14 @@ ENV DEBIAN_FRONTEND=noninteractive \
 RUN mkdir -p /wheels \
     && if [ "${INSTALL_SAGEATTENTION}" = "true" ]; then \
         apt-get update && apt-get install -y --no-install-recommends \
-            python3 python3-pip python3-dev git build-essential \
+            python3 python3-pip python3-dev git build-essential ninja-build \
         && ln -sf /usr/bin/python3 /usr/bin/python \
         && rm -rf /var/lib/apt/lists/* \
         && python -m pip install --upgrade pip --ignore-installed \
+        && python -m pip install setuptools wheel packaging ninja \
         && python -m pip install torch --extra-index-url https://download.pytorch.org/whl/${TORCH_INDEX} \
         && git clone --depth 1 https://github.com/thu-ml/SageAttention.git /tmp/SageAttention \
-        && TORCH_CUDA_ARCH_LIST="${SAGEATTENTION_ARCH_LIST}" python -m pip wheel --no-cache-dir --no-deps -w /wheels /tmp/SageAttention \
+        && TORCH_CUDA_ARCH_LIST="${SAGEATTENTION_ARCH_LIST}" python -m pip wheel --no-cache-dir --no-build-isolation --no-deps -w /wheels /tmp/SageAttention \
         && rm -rf /tmp/SageAttention; \
     else \
         echo "SageAttention build skipped (INSTALL_SAGEATTENTION=false)"; \
