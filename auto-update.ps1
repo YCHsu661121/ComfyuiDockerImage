@@ -11,6 +11,7 @@ param(
     [string]$TorchIndex = "cu130",
     [ValidateSet("standard", "none")]
     [string]$EasyInstallNodes = "standard",
+    [switch]$InstallSageAttention,
     [switch]$NoPush
 )
 
@@ -133,6 +134,7 @@ try {
         "--build-arg", "CUDA_TAG_DEVEL=$cudaTagDevel",
         "--build-arg", "TORCH_INDEX=$TorchIndex",
         "--build-arg", "EASY_INSTALL_NODES=$EasyInstallNodes",
+        "--build-arg", "INSTALL_SAGEATTENTION=$($InstallSageAttention.IsPresent.ToString().ToLower())",
         "-t", $fullTag,
         "-t", $latestTag,
         "-t", $rebuildDataTag,

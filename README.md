@@ -312,7 +312,7 @@ bash auto-update.sh --force --version v0.28.0
 ## Easy-Install Custom Nodes
 
 映像預設加入 Tavris1/ComfyUI-Easy-Install 的 `standard` 節點 profile：
-ComfyUI-Manager、Easy-Use、ControlNet Aux、rgthree、iTools、GGUF、
+Easy-Use、ControlNet Aux、rgthree、iTools、GGUF、
 ControlAltAI、Inpaint CropAndStitch、RMBG、VideoHelperSuite、TiledDiffusion、
 KJNodes、WanVideoWrapper、QwenVL、Qwen-TTS、FishAudioS2、SeedVR2、LayerStyle、
 WanAnimatePreprocess、Pixaroma、Easy-Sam3、SCAIL-Pose、MelBandRoFormer、
@@ -335,8 +335,31 @@ CUDA PyTorch wheel。
 bash auto-update.sh --easy-install-nodes none --no-push --force
 ```
 
-Nunchaku、SageAttention、FlashAttention、InsightFace 與 Trellis2 維持選用，
+Nunchaku、FlashAttention、InsightFace 與 Trellis2 維持選用，
 因為它們需要與 GPU 架構、PyTorch/CUDA 版本或模型授權相符的額外設定。
+
+### SageAttention（可選，CUDA wheel 編譯安裝）
+
+預設不編譯，需明確加上 build-arg 才會啟用：
+
+```powershell
+.\auto-update.ps1 -Force -InstallSageAttention
+```
+
+```bash
+bash auto-update.sh --force --install-sageattention
+```
+
+建置時會在含 `nvcc` 的 CUDA devel 階段安裝與執行期相同版本的 PyTorch，
+再依 `SAGEATTENTION_ARCH_LIST`（預設 `8.0;8.6;8.9;9.0`，涵蓋 Ampere/Ada/Hopper）
+編譯出對應的 wheel。若目標 GPU 架構不在預設清單內，可另外指定：
+
+```powershell
+docker build --build-arg INSTALL_SAGEATTENTION=true `
+             --build-arg SAGEATTENTION_ARCH_LIST="9.0" .
+```
+
+因需要編譯，啟用後 build 時間會拉長。
 
 ### llama-cpp-python（CUDA 加速，隨映像固定安裝）
 
